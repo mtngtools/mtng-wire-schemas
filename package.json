@@ -1,0 +1,19 @@
+{
+  "name": "@mtngtools/mtng-wire-schemas",
+  "version": "0.1.0",
+  "description": "Shared wire contract (Zod source of truth) between mtng-mono (TS) and mtng-dotnet-mono (.NET).",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "ts-json-schema-generator --path 'src/index.ts' --type '*' --out-dir schemas --no-type-check false"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "ts-json-schema-generator": "^2.3.0",
+    "typescript": "^5.6.0"
+  }
+}
