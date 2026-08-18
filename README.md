@@ -41,7 +41,7 @@ mtng-wire-schemas/
 
 ```sh
 npm install
-npm run generate        # src/ (Zod) -> schemas/ (JSON Schema)
+npm run generate        # src/ (Zod) -> schemas/ (JSON Schema)  [not wired yet — see Status]
 ```
 
 Generated output in `schemas/` is **committed**, and each consumer guards it with
