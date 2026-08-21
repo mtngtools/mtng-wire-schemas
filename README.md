@@ -30,26 +30,45 @@ either mono's build. (Same discipline as the `stable` / `experimental` areas in
 mtng-wire-schemas/
   src/                       # Zod v4 source of truth (authored)
     index.ts                 #   the allow-list: only messages exported here are dual-language
-    messages/                #   one file per message contract
-      example-ping.ts        #   stub sample — replace/extend with real contracts
+    messages/                #   one file per message contract, or one folder per domain
+      timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces
   schemas/                   # emitted JSON Schema (GENERATED — do not hand-edit)
     <message>.schema.json    #   one file per allow-listed message
-  package.json               # Zod SoT + generator toolchain + `generate` script
+  scripts/generate.mjs       # the emitter: src/ (Zod) -> schemas/ (JSON Schema)
+  package.json               # Zod SoT + `generate` / `typecheck` / `check` scripts
 ```
+
+### Authoring rules
+
+- **Every allow-listed export is a Zod schema with a PascalCase name.** The export name becomes
+  the schema file name (kebab-cased) *and* the C# class name — renaming an export renames both.
+- **Document fields with `.describe()`, not JSDoc.** Only `.describe()` reaches the emitted JSON
+  Schema, and from there the generated C# XML doc comments.
+- **Envelope fields (`type` / `domain` / `kind`) use single-value `z.enum([...])`, never
+  `z.literal(...)`.** `const` erases the literal on the way to C#; a one-member enum compiles it
+  into the mirror. This is what keeps a routing key from drifting off its schema.
+- **Two shapes do not survive the mirror to C#** — verified against NJsonSchema, not assumed:
+  `z.discriminatedUnion` (emits `oneOf`, which collapses to its first branch, silently dropping
+  the others) and `.nullable()` (emits `anyOf [T, null]`, which becomes a junk empty class). Use
+  a tagged record with `.optional()` fields instead, and enforce the invariant with `.check()`.
 
 ## Generate the JSON Schema
 
 ```sh
 npm install
-npm run generate        # src/ (Zod) -> schemas/ (JSON Schema)  [not wired yet — see Status]
+npm run generate        # src/ (Zod) -> schemas/ (JSON Schema)
+npm run check           # typecheck + generate + assert schemas/ is not stale
 ```
 
 Generated output in `schemas/` is **committed**, and each consumer guards it with
 `git diff --exit-code` so a schema change that wasn't regenerated fails CI on the stale side.
+`npm run check` is that guard on this side.
 
-> **Status:** scaffold. The exact command chain (Zod → JSON Schema via `ts-json-schema-generator`,
-> then JSON Schema → C# via NJsonSchema) is proven end-to-end by the acceptance spike tracked in
-> `mtng-dotnet-mono` (foundation map). Until then, `schemas/` holds a stub so the layout is fixed.
+The emitter is Zod v4's **native `z.toJSONSchema()`** (draft-07), not a third-party generator:
+it is the only one that carries Zod's constraints through to the emitted schema, and from there
+into C# — `.int()` becomes a bounded `long`, `z.iso.datetime()` a `DateTimeOffset`. It runs
+under plain `node`, which strips the TypeScript types on import, so the authored `src/*.ts` is
+what executes and there is no compiled copy to fall out of date.
 
 ## Versioning & releases
 

@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/TimerSetCues",
+  "definitions": {
+    "TimerSetCues": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "set-cues"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "timer"
+          ],
+          "description": "The owning domain — <domain> in the routing key."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "command"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "The Timer manager's authoritative server timestamp. Every broadcast is an anchor rather than a tick, so a client reconciles its own clock against this before interpolating."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The timer instance this message addresses — the <target> routing segment. Required on every timer message: a timer is a keyed instance, and 'presentation-phase' is the well-known key of the standing one."
+        },
+        "cues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim in firedCues, furthestCue and cue-fired. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'."
+              },
+              "atDuration": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Clock value the cue fires at, in signed whole seconds — negative in overtime."
+              }
+            },
+            "required": [
+              "label",
+              "atDuration"
+            ],
+            "additionalProperties": false,
+            "description": "A cue threshold on the timer's clock: fire when the clock descends past atDuration."
+          },
+          "description": "The new cue set, replacing whatever the timer held."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "cues"
+      ],
+      "additionalProperties": false,
+      "description": "Replace the cue set. Whole-set replacement, never a merge — an empty array clears it."
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/TimerCueFired",
+  "definitions": {
+    "TimerCueFired": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "cue-fired"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "timer"
+          ],
+          "description": "The owning domain — <domain> in the routing key."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "The Timer manager's authoritative server timestamp. Every broadcast is an anchor rather than a tick, so a client reconciles its own clock against this before interpolating."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The timer instance this message addresses — the <target> routing segment. Required on every timer message: a timer is a keyed instance, and 'presentation-phase' is the well-known key of the standing one."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The cue that fired, matching its label in the timer's cue set."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "label"
+      ],
+      "additionalProperties": false,
+      "description": "A cue was crossed. A crossing is not a transition, so without this nothing would tell a basic display that a cue fired between two anchors — it is the 'furthestCue advanced' push."
+    }
+  }
+}

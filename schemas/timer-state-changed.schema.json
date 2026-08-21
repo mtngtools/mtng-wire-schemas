@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/TimerStateChanged",
+  "definitions": {
+    "TimerStateChanged": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "state-changed"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "timer"
+          ],
+          "description": "The owning domain — <domain> in the routing key."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "The Timer manager's authoritative server timestamp. Every broadcast is an anchor rather than a tick, so a client reconciles its own clock against this before interpolating."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The timer instance this message addresses — the <target> routing segment. Required on every timer message: a timer is a keyed instance, and 'presentation-phase' is the well-known key of the standing one."
+        },
+        "timerKind": {
+          "type": "string",
+          "enum": [
+            "presentation-phase"
+          ],
+          "description": "Which kind of timer this instance is. Named timerKind rather than kind because the envelope already owns 'kind' for the message kind, and the backbone port reads that field by name to pick an exchange. One value today; Session, Presentation-block and Custom are additive."
+        },
+        "clock": {
+          "type": "object",
+          "properties": {
+            "lifecycle": {
+              "type": "string",
+              "enum": [
+                "running",
+                "paused",
+                "cleared"
+              ],
+              "description": "Which arm this is. 'cleared' is retained, not absent."
+            },
+            "endsAt": {
+              "description": "When the clock reaches zero, as an absolute instant — present iff running. Absolute rather than a remaining count so a skewed client can reconcile against ts, and so recovery after a restart recomputes the live clock from endsAt versus now.",
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            },
+            "duration": {
+              "description": "The held clock value in signed whole seconds — present iff paused.",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "lifecycle"
+          ],
+          "additionalProperties": false,
+          "description": "The timer's lifecycle and the one value that goes with it: 'running' carries endsAt, 'paused' carries duration, 'cleared' carries neither."
+        },
+        "startingValue": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991,
+          "description": "The clock value this run started from, in signed whole seconds. Frozen at load and re-anchored only by set-to or a restart — never by add or subtract, so a smart display can evaluate cues against a stable basis."
+        },
+        "cues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim in firedCues, furthestCue and cue-fired. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'."
+              },
+              "atDuration": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Clock value the cue fires at, in signed whole seconds — negative in overtime."
+              }
+            },
+            "required": [
+              "label",
+              "atDuration"
+            ],
+            "additionalProperties": false,
+            "description": "A cue threshold on the timer's clock: fire when the clock descends past atDuration."
+          },
+          "description": "The frozen cue set for this run — the smart-display basis."
+        },
+        "firedCues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Labels of the cues crossed so far. Un-fires when the clock moves back past one."
+        },
+        "furthestCue": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Label of the fired cue furthest along the countdown, or 'none' if none has fired. A lossless summary of firedCues, since cues sit on one descending clock and the fired set is always a contiguous prefix. Recedes to 'none' when the clock moves back."
+        },
+        "furthestCueFamily": {
+          "type": "string",
+          "enum": [
+            "none",
+            "warn",
+            "timesUp",
+            "over"
+          ],
+          "description": "The family of the furthest fired cue whose label names one — the closed vocabulary a dumb display switches on, so its whole protocol is 'read the clock, switch on one field'. A cue in no family (a custom 'coffee' cue) advances furthestCue but leaves this holding whatever the last cue in a family set, so it can never flip a warned display back to normal."
+        },
+        "label": {
+          "description": "What the timer is counting, e.g. the presentation phase's label. Thin by design — displays needing presentation context subscribe to the Present manager, not to the timer. Absent on a cleared or directly-driven timer.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "timerKind",
+        "clock",
+        "startingValue",
+        "cues",
+        "firedCues",
+        "furthestCue",
+        "furthestCueFamily"
+      ],
+      "additionalProperties": false,
+      "description": "A full, self-contained snapshot of one timer instance, broadcast per transition rather than per second: clients interpolate between anchors. The same shape answers the current-state RPC, so a snapshot and a delta are applied by the same code."
+    }
+  }
+}

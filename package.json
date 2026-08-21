@@ -1,18 +1,18 @@
 {
   "name": "@mtngtools/mtng-wire-schemas",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Shared wire contract (Zod source of truth) between mtng-mono (TS) and mtng-dotnet-mono (.NET).",
   "private": true,
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "generate": "node -e \"console.error('generate: the Zod -> JSON Schema command chain is finalized by the acceptance spike in mtng-dotnet-mono (foundation map). schemas/ is stubbed until then.'); process.exit(1)\""
+    "generate": "node scripts/generate.mjs",
+    "check": "npm run typecheck && npm run generate && git diff --exit-code -- schemas"
   },
   "dependencies": {
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "ts-json-schema-generator": "^2.3.0",
     "typescript": "^5.6.0"
   }
 }
