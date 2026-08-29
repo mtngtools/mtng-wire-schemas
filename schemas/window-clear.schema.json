@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/WindowClear",
+  "definitions": {
+    "WindowClear": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "clear"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "window"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Owned by the Windows State Manager; MTWindows is a Client publishing events in a domain it does not own."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "command"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts"
+      ],
+      "additionalProperties": false,
+      "description": "Clear the room's windows to the configured clear state: sugar for window.apply-state with the Manager's configured ClearStateKey. An assertion of a named, hand-authored state, never a deletion — data loss must not be able to black out a live room; this deliberate act is the way back to a known state."
+    }
+  }
+}
