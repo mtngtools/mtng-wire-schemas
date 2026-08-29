@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/WindowSlotContent",
+  "definitions": {
+    "WindowSlotContent": {
+      "type": "object",
+      "properties": {
+        "contentType": {
+          "type": "string",
+          "enum": [
+            "static"
+          ],
+          "description": "Which content this slot should hold. 'static' is the one reserved value — no payload, routed to the paint path (the slot renders its resolved static content). Every non-reserved value is exactly an IComponentRegistry key on the host side, one name end to end. Closed: an undeclared value fails schema validation at the edge and never reaches the registry."
+        }
+      },
+      "required": [
+        "contentType"
+      ],
+      "additionalProperties": false,
+      "description": "A slot's desired content, discriminated on contentType. Closed: 'static' (reserved, no payload — render the slot's resolved static content) is the only member until component members land, each carrying its component's config. Never null — a slot with no component mounted is set to static, not to nothing."
+    }
+  }
+}

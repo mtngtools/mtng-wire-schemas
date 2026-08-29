@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/WindowSetSlotContent",
+  "definitions": {
+    "WindowSetSlotContent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "set-slot-content"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "window"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Owned by the Windows State Manager; MTWindows is a Client publishing events in a domain it does not own."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "command"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "target": {
+          "description": "The WindowId this command addresses — the <target> routing segment. Absent on the broadcast form, which every window in the room applies. Authored by whoever writes the config, AMQP-topic-safe ([a-z0-9-]), and there is no identity beyond the string.",
+          "type": "string",
+          "minLength": 1
+        },
+        "slotId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The slot this command addresses, within the window's layout. A body field, never a routing segment. Only the single-slot Fill layout is specified today; naming the slot regardless keeps multi-slot layouts additive rather than a wire reshape."
+        },
+        "content": {
+          "type": "object",
+          "properties": {
+            "contentType": {
+              "type": "string",
+              "enum": [
+                "static"
+              ],
+              "description": "Which content this slot should hold. 'static' is the one reserved value — no payload, routed to the paint path (the slot renders its resolved static content). Every non-reserved value is exactly an IComponentRegistry key on the host side, one name end to end. Closed: an undeclared value fails schema validation at the edge and never reaches the registry."
+            }
+          },
+          "required": [
+            "contentType"
+          ],
+          "additionalProperties": false,
+          "description": "A slot's desired content, discriminated on contentType. Closed: 'static' (reserved, no payload — render the slot's resolved static content) is the only member until component members land, each carrying its component's config. Never null — a slot with no component mounted is set to static, not to nothing."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "slotId",
+        "content"
+      ],
+      "additionalProperties": false,
+      "description": "Declare a slot's desired content; the receiving window reconciles from whatever is there now. Identical desired content is a no-op — recovery replay and late-joiner re-assertions restart nothing; a changed config or content type recreates the occupant."
+    }
+  }
+}

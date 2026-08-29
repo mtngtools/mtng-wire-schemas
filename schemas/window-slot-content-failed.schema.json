@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/WindowSlotContentFailed",
+  "definitions": {
+    "WindowSlotContentFailed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "slot-content-failed"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "window"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Owned by the Windows State Manager; MTWindows is a Client publishing events in a domain it does not own."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The WindowId reporting — the <target> routing segment. Required: a window speaks only for itself."
+        },
+        "slotId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The slot whose mount failed, within the window's layout."
+        },
+        "contentType": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The contentType the failed mount asked for, verbatim. A plain string rather than the closed union's enum, because one of the reported failures is exactly an undeclared value that never parsed into it."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why the mount failed, human-readable: schema validation (including an undeclared contentType), a content type missing from the registry, a throw while constructing or initializing the component, or a dispose timeout. Consumers key off slotId and contentType, never off parsing this text."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "slotId",
+        "contentType",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "description": "A slot mount failed — the incumbent content is left running and nothing is painted into the slot, but silent on screen isn't silent everywhere: this is the report that reaches operators and tells the Windows State Manager desired state wasn't reached."
+    }
+  }
+}

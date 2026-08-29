@@ -1,0 +1,78 @@
+import { z } from "zod";
+
+/**
+ * Shared building blocks for the `window` domain's wire messages.
+ *
+ * Nothing here is a message and nothing here is exported from the allow-list barrel — these
+ * are the pieces every window message is assembled from.
+ *
+ * `window` is owned by the Windows State Manager (mtng-dotnet-mono ADR-0013's
+ * one-domain-one-owner); MTWindows is a Client that publishes `window.*` events in a domain it
+ * does not own — permitted, since ownership governs desired state, not event publishing (the
+ * MTWindows spec, §Authority and lifecycle).
+ *
+ * Only the slot-content pair crosses the language boundary today: web components connect
+ * directly over WebSockets, which is what makes these genuinely cross-language (ADR-0005). The
+ * language scope of the rest of the `window` surface is ruled per message by its build ticket
+ * (MTWindows wire-messages.md, §Dual-language surface).
+ *
+ * The authoring rules these follow (`.describe()` over JSDoc, `z.enum` over `z.literal`, no
+ * `z.discriminatedUnion`, no `.nullable()`) are in the repo README, with the generator output
+ * that settles each one.
+ */
+
+const envelopeCore = <TType extends string, TKind extends "event" | "command">(
+  type: TType,
+  kind: TKind,
+) => ({
+  type: z.enum([type]).describe("The message name — <name> in the routing key."),
+  domain: z
+    .enum(["window"])
+    .describe(
+      "The owning domain — <domain> in the routing key. Owned by the Windows State Manager; " +
+        "MTWindows is a Client publishing events in a domain it does not own.",
+    ),
+  kind: z
+    .enum([kind])
+    .describe("Which exchange carries this message. Never reaches the routing key."),
+  ts: z
+    .iso
+    .datetime()
+    .describe("When the sender published this message, ISO-8601 UTC."),
+});
+
+/**
+ * The envelope of a window-addressed **command**: `{type, domain, kind, ts, target?}`.
+ *
+ * `target` is optional because every window-addressed command has a broadcast form alongside
+ * the targeted one — a command with no target reaches every window in the room.
+ */
+export const windowCommandEnvelope = <TType extends string>(type: TType) => ({
+  ...envelopeCore(type, "command"),
+  target: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "The WindowId this command addresses — the <target> routing segment. Absent on the " +
+        "broadcast form, which every window in the room applies. Authored by whoever writes " +
+        "the config, AMQP-topic-safe ([a-z0-9-]), and there is no identity beyond the string.",
+    ),
+});
+
+/**
+ * The envelope of a window **event**: `{type, domain, kind, ts, target}`.
+ *
+ * `target` is required — a window speaks only for itself, so every event is published on the
+ * targeted key form.
+ */
+export const windowEventEnvelope = <TType extends string>(type: TType) => ({
+  ...envelopeCore(type, "event"),
+  target: z
+    .string()
+    .min(1)
+    .describe(
+      "The WindowId reporting — the <target> routing segment. Required: a window speaks only " +
+        "for itself.",
+    ),
+});

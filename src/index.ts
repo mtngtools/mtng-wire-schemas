@@ -19,6 +19,16 @@ export {
   BackdropShown,
 } from "./messages/backdrop/events.ts";
 
+// window domain — the slot-content trio ONLY (mtngtools/mtng-dotnet-mono#312): web components
+// connect directly over WebSockets, which is what makes these genuinely cross-language. The
+// rest of the window surface has a .NET originator and is ruled per message by its build
+// ticket (MTWindows wire-messages.md §Dual-language surface). WindowSlotContent is the closed
+// content union — not itself a message, exported so the TS side narrows on the same schema
+// the command embeds.
+export { WindowSetSlotContent } from "./messages/window/commands.ts";
+export { WindowSlotContent } from "./messages/window/content.ts";
+export { WindowSlotContentFailed } from "./messages/window/events.ts";
+
 // timer domain — the Timer manager's message set: 2 events, 1 rpc, 7 commands.
 export { TimerCueFired, TimerStateChanged } from "./messages/timer/events.ts";
 export { TimerCurrentState } from "./messages/timer/rpc.ts";
