@@ -29,6 +29,13 @@ export { WindowSetSlotContent } from "./messages/window/commands.ts";
 export { WindowSlotContent } from "./messages/window/content.ts";
 export { WindowSlotContentFailed } from "./messages/window/events.ts";
 
+// presentation domain — the Present manager's pointer and its snapshot RPC, both dual-language
+// (mtngtools/mtng-dotnet-mono#336, contract ratified by #175). TS displays subscribe here for
+// presentation context and snapshot over the same connect protocol they use everywhere. No
+// commands: progression control is still open fog on map #42.
+export { PresentationStateChanged } from "./messages/presentation/events.ts";
+export { PresentationCurrentState } from "./messages/presentation/rpc.ts";
+
 // timer domain — the Timer manager's message set: 2 events, 1 rpc, 7 commands.
 export { TimerCueFired, TimerStateChanged } from "./messages/timer/events.ts";
 export { TimerCurrentState } from "./messages/timer/rpc.ts";

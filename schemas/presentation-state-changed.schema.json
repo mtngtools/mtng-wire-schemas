@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/PresentationStateChanged",
+  "definitions": {
+    "PresentationStateChanged": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "state-changed"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "presentation"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Room-singular, so the key stops here: there is no <target> segment on any presentation message."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "The PUBLISH instant — when this message went out, ISO-8601 UTC. Not the transition instant: a boot re-broadcast of an unchanged state refreshes ts and leaves enteredAt untouched. Which of the two a consumer's freshness logic reads is that consumer's decision, not this contract's."
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "intro",
+            "talk",
+            "qa",
+            "none"
+          ],
+          "description": "Where in the presentation the room is, or 'none' for no presentation. DEFAULT-TO-TALK: the manager stamps 'talk' whenever the phase is not explicitly 'intro' or 'qa', so a 'talk' may be authored or defaulted and the two are indistinguishable on the wire — there is no 'unknown' value and no source flag. Consumers must not key logic on phase alone; corroborate it against enteredAt and presentationId."
+        },
+        "presentationId": {
+          "description": "Opaque id of the presentation as held by the Meeting data manager (either ingest path). MATCHED BYTE-WISE, NEVER PARSED: no structure is promised, and equality is the only operation defined on it. Present iff phase ≠ none.",
+          "type": "string",
+          "minLength": 1
+        },
+        "actualPrStart": {
+          "description": "When the BLOCK actually started, ISO-8601 UTC in the room time-authority's frame — stamped at first phase-begin. MAY BE RE-STAMPED MID-PHASE: a live block fact, not an equality key (that is enteredAt). Wire spelling of the spec term actual_prStart. Present iff phase ≠ none.",
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+        },
+        "enteredAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the CURRENT STATE was entered, ISO-8601 UTC — entering 'none' is itself a stamped transition. Required always, with no default: a pointer lacking it fails validation and is unreadable. EQUALITY KEY: byte-identical on every republish of the same state — boot re-broadcast and mid-phase actualPrStart re-stamp included — and preserved across the manager's own restart, where it is restored from the retained snapshot rather than re-minted. A re-minted stamp is monotonic and plausible, and silently breaks every consumer keying on this."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "phase",
+        "enteredAt"
+      ],
+      "additionalProperties": false,
+      "description": "The room's presentation pointer: a full, self-contained statement of the current state, published on every transition (entering 'none' included) and on boot re-broadcast. The same shape answers the current-state RPC, so a snapshot and a transition are applied by the same code. presentationId and actualPrStart are present iff phase ≠ none; enteredAt is always present and is the equality key for 'same state'."
+    }
+  }
+}
