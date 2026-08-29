@@ -34,7 +34,9 @@ mtng-wire-schemas/
       backdrop/              #   the floor app's set: commands, events + shared pieces
       presentation/          #   the Present manager's pointer: event, rpc + shared pieces
       timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces
-      window/                #   MTWindows' dual-language slice: the slot-content trio
+      window/                #   the window domain's dual slices: the slot-content trio + the
+                             #   configuration surface's simple messages (hide/show,
+                             #   apply-state/clear, config-rejected)
   schemas/                   # emitted JSON Schema (GENERATED — do not hand-edit)
     <message>.schema.json    #   one file per allow-listed message
   scripts/generate.mjs       # the emitter: src/ (Zod) -> schemas/ (JSON Schema)

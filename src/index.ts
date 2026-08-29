@@ -19,15 +19,28 @@ export {
   BackdropShown,
 } from "./messages/backdrop/events.ts";
 
-// window domain — the slot-content trio ONLY (mtngtools/mtng-dotnet-mono#312): web components
-// connect directly over WebSockets, which is what makes these genuinely cross-language. The
-// rest of the window surface has a .NET originator and is ruled per message by its build
-// ticket (MTWindows wire-messages.md §Dual-language surface). WindowSlotContent is the closed
-// content union — not itself a message, exported so the TS side narrows on the same schema
-// the command embeds.
+// window domain — the slot-content trio (mtngtools/mtng-dotnet-mono#312): web components
+// connect directly over WebSockets, which is what makes these genuinely cross-language.
+// WindowSlotContent is the closed content union — not itself a message, exported so the TS
+// side narrows on the same schema the command embeds.
 export { WindowSetSlotContent } from "./messages/window/commands.ts";
 export { WindowSlotContent } from "./messages/window/content.ts";
 export { WindowSlotContentFailed } from "./messages/window/events.ts";
+
+// window domain — the configuration surface's dual-language slice, ruled per message by
+// mtngtools/mtng-dotnet-mono#315 (MTWindows wire-messages.md §Dual-language surface): the
+// sugar verbs, the named-state pair, and the rejection report cross here. The config-carrying
+// messages (set-window, patch-window, set-bounds) are ruled single-language: their geometry
+// fields are shape-discriminated unions this generator cannot mirror (no oneOf/anyOf survives
+// to C#), so their one spelling lives hand-authored on the .NET side — revisitable if the
+// mirror ever learns unions.
+export {
+  WindowApplyState,
+  WindowClear,
+  WindowHide,
+  WindowShow,
+} from "./messages/window/commands.ts";
+export { WindowConfigRejected } from "./messages/window/events.ts";
 
 // presentation domain — the Present manager's pointer and its snapshot RPC, both dual-language
 // (mtngtools/mtng-dotnet-mono#336, contract ratified by #175). TS displays subscribe here for

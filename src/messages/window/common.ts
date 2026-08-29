@@ -11,10 +11,13 @@ import { z } from "zod";
  * does not own — permitted, since ownership governs desired state, not event publishing (the
  * MTWindows spec, §Authority and lifecycle).
  *
- * Only the slot-content pair crosses the language boundary today: web components connect
- * directly over WebSockets, which is what makes these genuinely cross-language (ADR-0005). The
- * language scope of the rest of the `window` surface is ruled per message by its build ticket
- * (MTWindows wire-messages.md, §Dual-language surface).
+ * The domain's dual-language surface is ruled per message (MTWindows wire-messages.md,
+ * §Dual-language surface): the slot-content trio crossed with mtngtools/mtng-dotnet-mono#312
+ * (web components connect directly over WebSockets — ADR-0005), and the configuration
+ * surface's simple messages — hide/show, apply-state/clear, config-rejected — with
+ * mtngtools/mtng-dotnet-mono#315. The config-carrying messages (set-window, patch-window,
+ * set-bounds) are ruled single-language: their shape-discriminated geometry unions cannot
+ * ride the oneOf-less mirror, so their one spelling lives hand-authored on the .NET side.
  *
  * The authoring rules these follow (`.describe()` over JSDoc, `z.enum` over `z.literal`, no
  * `z.discriminatedUnion`, no `.nullable()`) are in the repo README, with the generator output
@@ -61,6 +64,37 @@ export const windowCommandEnvelope = <TType extends string>(type: TType) => ({
 });
 
 /**
+ * The envelope of a **Manager-addressed, window-naming command**: `{type, domain, kind, ts,
+ * target}`, target required.
+ *
+ * The patch-and-sugar surface names a `WindowId` in the target segment but is bound by the
+ * Windows State Manager, never by a window (§Who binds what): the Manager merges into stored
+ * desired state and re-emits the whole-config Set. Target is required — sugar expands to
+ * exactly one patch, and a patch with nobody to patch is meaningless.
+ */
+export const windowManagerTargetedCommandEnvelope = <TType extends string>(type: TType) => ({
+  ...envelopeCore(type, "command"),
+  target: z
+    .string()
+    .min(1)
+    .describe(
+      "The WindowId whose stored desired state this command patches — the <target> routing " +
+        "segment. Required: the sugar expands to exactly one patch. Bound by the Windows " +
+        "State Manager, not by any window, even though the key names a WindowId.",
+    ),
+});
+
+/**
+ * The envelope of a **Manager-addressed, room-wide command**: `{type, domain, kind, ts}`,
+ * no target segment at all.
+ *
+ * `window.apply-state` / `window.clear` address the Manager, whose store is room-wide —
+ * there is no window to name, so the field does not exist rather than being optional.
+ */
+export const windowManagerCommandEnvelope = <TType extends string>(type: TType) =>
+  envelopeCore(type, "command");
+
+/**
  * The envelope of a window **event**: `{type, domain, kind, ts, target}`.
  *
  * `target` is required — a window speaks only for itself, so every event is published on the
@@ -74,5 +108,25 @@ export const windowEventEnvelope = <TType extends string>(type: TType) => ({
     .describe(
       "The WindowId reporting — the <target> routing segment. Required: a window speaks only " +
         "for itself.",
+    ),
+});
+
+/**
+ * The envelope of a window event whose target is **optional**: `{type, domain, kind, ts,
+ * target?}`.
+ *
+ * `window.config-rejected` is the one holder today: a WindowId that failed charset validation
+ * has no window to address, so the rejection goes out on the broadcast key form.
+ */
+export const windowOptionallyTargetedEventEnvelope = <TType extends string>(type: TType) => ({
+  ...envelopeCore(type, "event"),
+  target: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "The WindowId the report concerns — the <target> routing segment. Absent when the " +
+        "offending part is the WindowId itself: an id that failed validation has no window " +
+        "to address.",
     ),
 });
