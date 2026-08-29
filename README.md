@@ -32,7 +32,9 @@ mtng-wire-schemas/
     index.ts                 #   the allow-list: only messages exported here are dual-language
     messages/                #   one file per message contract, or one folder per domain
       backdrop/              #   the floor app's set: commands, events + shared pieces
+      presentation/          #   the Present manager's pointer: event, rpc + shared pieces
       timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces
+      window/                #   MTWindows' dual-language slice: the slot-content trio
   schemas/                   # emitted JSON Schema (GENERATED — do not hand-edit)
     <message>.schema.json    #   one file per allow-listed message
   scripts/generate.mjs       # the emitter: src/ (Zod) -> schemas/ (JSON Schema)

@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/PresentationCurrentState",
+  "definitions": {
+    "PresentationCurrentState": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "current-state"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "presentation"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Room-singular, so the key stops here: there is no <target> segment on any presentation message."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "rpc"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "The PUBLISH instant — when this message went out, ISO-8601 UTC. Not the transition instant: a boot re-broadcast of an unchanged state refreshes ts and leaves enteredAt untouched. Which of the two a consumer's freshness logic reads is that consumer's decision, not this contract's."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts"
+      ],
+      "additionalProperties": false,
+      "description": "Ask the room for its presentation pointer. Envelope-only — presentation state is room-singular, so there is nothing to address. The reply is a PresentationStateChanged, identical to the broadcast, so a snapshot and a transition are applied by the same code."
+    }
+  }
+}
