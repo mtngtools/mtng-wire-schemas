@@ -11,10 +11,13 @@ import { z } from "zod";
  * does not own — permitted, since ownership governs desired state, not event publishing (the
  * MTWindows spec, §Authority and lifecycle).
  *
- * Only the slot-content pair crosses the language boundary today: web components connect
- * directly over WebSockets, which is what makes these genuinely cross-language (ADR-0005). The
- * language scope of the rest of the `window` surface is ruled per message by its build ticket
- * (MTWindows wire-messages.md, §Dual-language surface).
+ * The domain's dual-language surface is ruled per message (MTWindows wire-messages.md,
+ * §Dual-language surface): the slot-content trio crossed with mtngtools/mtng-dotnet-mono#312
+ * (web components connect directly over WebSockets — ADR-0005), and the configuration
+ * surface's simple messages — hide/show, apply-state/clear, config-rejected — with
+ * mtngtools/mtng-dotnet-mono#315. The config-carrying messages (set-window, patch-window,
+ * set-bounds) are ruled single-language: their shape-discriminated geometry unions cannot
+ * ride the oneOf-less mirror, so their one spelling lives hand-authored on the .NET side.
  *
  * The authoring rules these follow (`.describe()` over JSDoc, `z.enum` over `z.literal`, no
  * `z.discriminatedUnion`, no `.nullable()`) are in the repo README, with the generator output
