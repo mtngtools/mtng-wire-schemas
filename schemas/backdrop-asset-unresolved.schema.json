@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/BackdropAssetUnresolved",
+  "definitions": {
+    "BackdropAssetUnresolved": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "asset-unresolved"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "backdrop"
+          ],
+          "description": "The owning domain — <domain> in the routing key. A segment with no Manager owner: the floor app is a Client, and a segment does not acquire a Manager by existing."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The machine reporting — the <machine> routing segment, the sender's Routing:MachineName. Required: the floor speaks only for its own machine. A machine name, not an id: nothing enforces uniqueness on the value."
+        },
+        "asset": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The asset reference that could not be resolved, as written in configuration."
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "missing",
+            "outsideRoot",
+            "undecodable",
+            "animated"
+          ],
+          "description": "Why the asset could not become an image — the shared static-content reasons: 'missing' — no file at the reference; 'outsideRoot' — the reference escapes the assets root; 'undecodable' — the file is not a decodable image; 'animated' — animated images are rejected by policy."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "asset",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "description": "A configured asset reference could not be turned into an image. The floor degrades to its solid background and keeps painting — this event is the report reaching whoever just replaced the artwork."
+    }
+  }
+}

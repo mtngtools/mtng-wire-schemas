@@ -31,6 +31,7 @@ mtng-wire-schemas/
   src/                       # Zod v4 source of truth (authored)
     index.ts                 #   the allow-list: only messages exported here are dual-language
     messages/                #   one file per message contract, or one folder per domain
+      backdrop/              #   the floor app's set: commands, events + shared pieces
       timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces
   schemas/                   # emitted JSON Schema (GENERATED — do not hand-edit)
     <message>.schema.json    #   one file per allow-listed message

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/BackdropHide",
+  "definitions": {
+    "BackdropHide": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "hide"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "backdrop"
+          ],
+          "description": "The owning domain — <domain> in the routing key. A segment with no Manager owner: the floor app is a Client, and a segment does not acquire a Manager by existing."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "command"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "target": {
+          "description": "The machine this command addresses — the <machine> routing segment, the receiver's Routing:MachineName. Absent on the broadcast forms, which every floor in the room applies. A machine name, not an id: nothing enforces uniqueness on the value.",
+          "type": "string",
+          "minLength": 1
+        },
+        "duration": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "How long to hide the floor, in whole seconds. Required — no default, no unbounded form. Enforced receiver-side against the locally configured cap: over-cap requests are clamped, not rejected, and the effective deadline is reported on backdrop.hidden. Under the monotonic rule a repeat hide only ever shortens."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "duration"
+      ],
+      "additionalProperties": false,
+      "description": "Hide the floor for a bounded time, revealing the desktop to troubleshoot one machine. duration is required and capped receiver-side; the floor is visible again within one cap of the first hide, whatever arrives afterwards."
+    }
+  }
+}

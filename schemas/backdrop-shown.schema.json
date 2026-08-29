@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/BackdropShown",
+  "definitions": {
+    "BackdropShown": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "shown"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "backdrop"
+          ],
+          "description": "The owning domain — <domain> in the routing key. A segment with no Manager owner: the floor app is a Client, and a segment does not acquire a Manager by existing."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The machine reporting — the <machine> routing segment, the sender's Routing:MachineName. Required: the floor speaks only for its own machine. A machine name, not an id: nothing enforces uniqueness on the value."
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "commanded",
+            "expired"
+          ],
+          "description": "Why the floor returned: 'commanded' — a show arrived; 'expired' — the hide deadline passed."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "description": "The floor is back, and why: a show command, or the hide deadline expiring. The return after an expiry is the room proving the floor is alive."
+    }
+  }
+}
