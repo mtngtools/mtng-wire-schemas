@@ -36,7 +36,8 @@ mtng-wire-schemas/
       timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces
       window/                #   the window domain's dual slices: the slot-content trio, the
                              #   configuration surface's simple messages (hide/show,
-                             #   apply-state/clear, config-rejected) + asset-unresolved
+                             #   apply-state/clear, config-rejected), asset-unresolved + the
+                             #   placement verdicts (display-unsatisfied, bounds-overflowed)
   schemas/                   # emitted JSON Schema (GENERATED — do not hand-edit)
     <message>.schema.json    #   one file per allow-listed message
   scripts/generate.mjs       # the emitter: src/ (Zod) -> schemas/ (JSON Schema)

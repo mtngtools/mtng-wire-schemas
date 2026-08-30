@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/WindowBoundsOverflowed",
+  "definitions": {
+    "WindowBoundsOverflowed": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "bounds-overflowed"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "window"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Owned by the Windows State Manager; MTWindows is a Client publishing events in a domain it does not own."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The WindowId reporting — the <target> routing segment. Required: a window speaks only for itself."
+        },
+        "bounds": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Left edge, in the reference rectangle's coordinate space."
+            },
+            "y": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Top edge, in the reference rectangle's coordinate space."
+            },
+            "width": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Outer width — chrome included, so a decorations toggle preserves it."
+            },
+            "height": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Outer height — chrome included, so a decorations toggle preserves it."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "additionalProperties": false,
+          "description": "The window's resolved outer rectangle, as applied — outer, so chrome is included and a decorations toggle preserves it. Same unit and virtual-desktop coordinate space the display source reports its display bounds in; which unit that is per OS is the MTWindows spec's units table, not this field's to restate."
+        },
+        "reference": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Left edge of the rectangle the geometry was measured against."
+            },
+            "y": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Top edge of the rectangle the geometry was measured against."
+            },
+            "width": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Width of the rectangle the geometry was measured against."
+            },
+            "height": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Height of the rectangle the geometry was measured against."
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "additionalProperties": false,
+          "description": "The rectangle the window overflowed: the resolved display's full bounds or working area for a display-anchored window, the virtual desktop for an OS-explicit one, and the followed window's outer or client area for a following one. One rule, one event, whichever arm the window's position took. Same unit and coordinate space as bounds, so the overhang is bounds minus this."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "bounds",
+        "reference"
+      ],
+      "additionalProperties": false,
+      "description": "A window's resolved bounds are not fully inside the rectangle they were measured against. Overflow is allowed, never clamped and never rejected — the bounds stand as computed — but silent on screen is never silent everywhere, so it is reported here."
+    }
+  }
+}

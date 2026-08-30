@@ -48,6 +48,16 @@ export { WindowConfigRejected } from "./messages/window/events.ts";
 // static-content library therefore speak the same reason vocabulary on the wire.
 export { WindowAssetUnresolved } from "./messages/window/events.ts";
 
+// window domain — the placement verdicts, ruled dual-language by
+// mtngtools/mtng-dotnet-mono#316 on the reasoning #315 gave config-rejected: these are
+// operator-facing reports, and a room console is TS. Both are pure events with flat fields,
+// so nothing here strains the mirror — the geometry UNIONS are what kept set-window
+// single-language, and a resolved rectangle is not a union.
+export {
+  WindowBoundsOverflowed,
+  WindowDisplayUnsatisfied,
+} from "./messages/window/events.ts";
+
 // presentation domain — the Present manager's pointer and its snapshot RPC, both dual-language
 // (mtngtools/mtng-dotnet-mono#336, contract ratified by #175). TS displays subscribe here for
 // presentation context and snapshot over the same connect protocol they use everywhere. No

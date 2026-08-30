@@ -17,10 +17,13 @@ import { z } from "zod";
  * surface's simple messages — hide/show, apply-state/clear, config-rejected — with
  * mtngtools/mtng-dotnet-mono#315, joined by asset-unresolved with
  * mtngtools/mtng-dotnet-mono#319 (an operator-facing report of two plain fields, and the
- * identical backdrop.asset-unresolved already crosses). The config-carrying messages
+ * identical backdrop.asset-unresolved already crosses) and by the placement verdicts —
+ * display-unsatisfied, bounds-overflowed — with mtngtools/mtng-dotnet-mono#316, on the same
+ * reasoning: operator-facing reports, and a room console is TS. The config-carrying messages
  * (set-window, patch-window, set-bounds) are ruled single-language: their shape-discriminated
  * geometry unions cannot ride the oneOf-less mirror, so their one spelling lives hand-authored
- * on the .NET side.
+ * on the .NET side. A *resolved* rectangle is not a union, which is why the verdicts cross
+ * where the configs do not.
  *
  * The authoring rules these follow (`.describe()` over JSDoc, `z.enum` over `z.literal`, no
  * `z.discriminatedUnion`, no `.nullable()`) are in the repo README, with the generator output
