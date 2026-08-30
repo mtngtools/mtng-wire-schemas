@@ -134,7 +134,9 @@ export const WindowAssetUnresolved = z
         "Why the asset could not become an image — the shared static-content reasons: " +
           "'missing' — no file at the reference; 'outsideRoot' — the reference canonicalizes " +
           "outside the assets root; 'undecodable' — the file is not a decodable image; " +
-          "'animated' — an animated image is not static, and is refused by name.",
+          "'animated' — an animated image is not static, and is refused whatever its " +
+          "extension says: animation is a fact about the bytes, so a GIF renamed .png is " +
+          "still animated.",
       ),
   })
   .describe(
