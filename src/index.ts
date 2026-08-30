@@ -42,6 +42,12 @@ export {
 } from "./messages/window/commands.ts";
 export { WindowConfigRejected } from "./messages/window/events.ts";
 
+// window domain — the static content paint path's one report (mtngtools/mtng-dotnet-mono#319),
+// dual for the reason config-rejected is: an operator-facing report of two plain fields, and
+// the identical backdrop message (BackdropAssetUnresolved) already crosses. Both hosts of the
+// static-content library therefore speak the same reason vocabulary on the wire.
+export { WindowAssetUnresolved } from "./messages/window/events.ts";
+
 // presentation domain — the Present manager's pointer and its snapshot RPC, both dual-language
 // (mtngtools/mtng-dotnet-mono#336, contract ratified by #175). TS displays subscribe here for
 // presentation context and snapshot over the same connect protocol they use everywhere. No
