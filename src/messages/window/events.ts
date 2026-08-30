@@ -90,3 +90,60 @@ export const WindowConfigRejected = z
   );
 
 export type WindowConfigRejected = z.infer<typeof WindowConfigRejected>;
+
+/**
+ * `window.asset-unresolved[.<windowId>]` — a configured asset could not become an image.
+ *
+ * The same shape of failure as `window.display-unsatisfied`: a name in configuration that
+ * could not become a real thing. The static-content library cannot publish — it reports
+ * synchronously to its host — so MTWindows publishes on its behalf, and the slot degrades to
+ * what `Solid` paints rather than blanking. A config valid on seven machines and broken on the
+ * eighth is *degraded*, not *rejected*: the malformed-reference cases (absolute path, drive
+ * letter, UNC root, traversal, missing extension) are knowable with no filesystem at all and
+ * ride `window.config-rejected` instead.
+ *
+ * Mount failures never come here, and these never ride `window.slot-content-failed` — a static
+ * component is painted, not mounted, so it has no mount to fail.
+ *
+ * Target is optional, like `window.config-rejected` but for a different reason: one asset may
+ * be referenced by several windows, and by the system default preset, which belongs to no
+ * window. A report no single window can honestly own goes out on the broadcast key form.
+ */
+export const WindowAssetUnresolved = z
+  .strictObject({
+    ...windowOptionallyTargetedEventEnvelope("asset-unresolved"),
+    target: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "The WindowId whose configuration reached this asset — the <target> routing segment. " +
+          "Absent when no single window owns the failure: one asset may be referenced by " +
+          "several windows, and by the system default preset, which belongs to no window.",
+      ),
+    asset: z
+      .string()
+      .min(1)
+      .describe(
+        "The asset reference that could not be resolved, as written in configuration — a " +
+          "path relative to the machine's assets root, extension included.",
+      ),
+    reason: z
+      .enum(["missing", "outsideRoot", "undecodable", "animated"])
+      .describe(
+        "Why the asset could not become an image — the shared static-content reasons: " +
+          "'missing' — no file at the reference; 'outsideRoot' — the reference canonicalizes " +
+          "outside the assets root; 'undecodable' — the file is not a decodable image; " +
+          "'animated' — an animated image is not static, and is refused whatever its " +
+          "extension says: animation is a fact about the bytes, so a GIF renamed .png is " +
+          "still animated.",
+      ),
+  })
+  .describe(
+    "A configured asset reference could not be turned into an image at warm time. The slot " +
+      "degrades to what Solid paints and keeps painting — this event is the report reaching " +
+      "whoever just replaced the artwork, and it tells the Windows State Manager desired " +
+      "state was not reached.",
+  );
+
+export type WindowAssetUnresolved = z.infer<typeof WindowAssetUnresolved>;

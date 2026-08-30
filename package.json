@@ -1,6 +1,6 @@
 {
   "name": "@mtngtools/mtng-wire-schemas",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Shared wire contract (Zod source of truth) between mtng-mono (TS) and mtng-dotnet-mono (.NET).",
   "private": true,
   "type": "module",

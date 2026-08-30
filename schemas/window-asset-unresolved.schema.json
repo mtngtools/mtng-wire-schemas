@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/WindowAssetUnresolved",
+  "definitions": {
+    "WindowAssetUnresolved": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "asset-unresolved"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "window"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Owned by the Windows State Manager; MTWindows is a Client publishing events in a domain it does not own."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "target": {
+          "description": "The WindowId whose configuration reached this asset — the <target> routing segment. Absent when no single window owns the failure: one asset may be referenced by several windows, and by the system default preset, which belongs to no window.",
+          "type": "string",
+          "minLength": 1
+        },
+        "asset": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The asset reference that could not be resolved, as written in configuration — a path relative to the machine's assets root, extension included."
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "missing",
+            "outsideRoot",
+            "undecodable",
+            "animated"
+          ],
+          "description": "Why the asset could not become an image — the shared static-content reasons: 'missing' — no file at the reference; 'outsideRoot' — the reference canonicalizes outside the assets root; 'undecodable' — the file is not a decodable image; 'animated' — an animated image is not static, and is refused whatever its extension says: animation is a fact about the bytes, so a GIF renamed .png is still animated."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "asset",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "description": "A configured asset reference could not be turned into an image at warm time. The slot degrades to what Solid paints and keeps painting — this event is the report reaching whoever just replaced the artwork, and it tells the Windows State Manager desired state was not reached."
+    }
+  }
+}
