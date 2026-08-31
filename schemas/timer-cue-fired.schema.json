@@ -98,8 +98,8 @@
         "timer": {
           "type": "object",
           "properties": {
-            "cues": {
-              "description": "The resolved cue set for the phase — the same shape the timer re-broadcasts on timer.state-changed, so it is carried through rather than re-derived. Thresholds are concrete clock values: a producer resolves its own symbolic form before publishing.",
+            "phaseCues": {
+              "description": "The phase's cue set as AUTHORED, in phaseCue's symbolic form — refs already dereferenced and any preset applied, but thresholds not reduced. The Timer manager reduces them to concrete clock values at phase load, because a percent threshold measures against a starting timer value that is not fixed until the phase starts. Deliberately NOT the reduced timerCue the timer broadcasts on timer.state-changed.",
               "type": "array",
               "items": {
                 "type": "object",
@@ -107,21 +107,35 @@
                   "label": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim in firedCues, furthestCue and cue-fired. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'."
+                    "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim into the reduced cue the timer broadcasts. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'. Consumer-facing only: it plays no part in the timing calculation. (Upstream spells this field 'kind'.)"
                   },
-                  "atDuration": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991,
-                    "description": "Clock value the cue fires at, in signed whole seconds — negative in overtime."
+                  "anchor": {
+                    "description": "Which end of the phase 'at' is measured from; absent means 'end'. Load-bearing together with the sign of 'at', never inferred from it: 'end' fires before the end on a positive value and after it on a negative one, 'start' fires after the start on a positive value and before it on a negative one.",
+                    "type": "string",
+                    "enum": [
+                      "start",
+                      "end"
+                    ]
+                  },
+                  "at": {
+                    "type": "number",
+                    "description": "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by atUnits. Unlike the wire's 'minutes', a negative here is a direction and never an auto-mode sentinel."
+                  },
+                  "atUnits": {
+                    "description": "The unit of |at|; absent means 'minutes'. 'percent' measures against the phase's STARTING TIMER VALUE — what the timer starts the phase from, after any 'remaining' basis-switch and up-front floor/cap. That is NOT the floor/cap basis, which is the phase's initial calculated minutes. There is no [0,100] clamp: a percent may resolve outside the phase, exactly as a large absolute value can. A percent cue is dropped when the starting value is 0; an absolute cue is always kept.",
+                    "type": "string",
+                    "enum": [
+                      "minutes",
+                      "percent"
+                    ]
                   }
                 },
                 "required": [
                   "label",
-                  "atDuration"
+                  "at"
                 ],
                 "additionalProperties": false,
-                "description": "A cue threshold on the timer's clock: fire when the clock descends past atDuration."
+                "description": "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete clock threshold at phase load, because a percent threshold's denominator is not fixed until the phase starts."
               }
             },
             "timerHints": {
@@ -188,7 +202,7 @@
             }
           },
           "additionalProperties": false,
-          "description": "SelfContained only: what the producer already resolved for the timer — the phase's cue set, its hint set, and its load directive. Timer manager only. Absent in a Linked room, where the Timer manager resolves them itself. Every member is optional and at least one is present."
+          "description": "SelfContained only: what the producer ran the Resolved tier over for the timer — the phase's authored cue set, its hint set, and its load directive, inline and ref-free. Timer manager only. Still symbolic: the timer runs the Runtime tier over them in both dialects. Absent in a Linked room, where the Timer manager runs the Resolved tier too. Every member is optional and at least one is present."
         },
         "files": {
           "minItems": 1,
