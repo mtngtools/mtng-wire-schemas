@@ -30,8 +30,8 @@ either mono's build. (Same discipline as the `stable` / `experimental` areas in
 mtng-wire-schemas/
   src/                       # Zod v4 source of truth (authored)
     index.ts                 #   the allow-list: only messages exported here are dual-language
-    shared/                  #   shapes MORE THAN ONE DOMAIN assembles from — see below
-      timing.ts              #     timerCue, timerHint, load
+    shared/                  #   VOCABULARIES more than one domain assembles from — see below
+      timing.ts              #     phaseCue, timerCue, timerHint, load
       presentation-context.ts#     the SelfContained dialect's block/session/timer/files groups
     messages/                #   one file per message contract, or one folder per domain
       backdrop/              #   the floor app's set: commands, events + shared pieces
@@ -47,15 +47,26 @@ mtng-wire-schemas/
   package.json               # Zod SoT + `generate` / `typecheck` / `check` scripts
 ```
 
-### `src/shared/` — cross-domain shapes
+### `src/shared/` — cross-domain vocabularies
 
 Until the `SelfContained` presentation dialect landed, every shape belonged to exactly one domain
 and lived in that domain's `common.ts`. That is no longer true: `presentation.state-changed`
 carries the timer's cue and hint vocabulary, and `timer.state-changed` / `timer.cue-fired` carry
 the presentation domain's context back out (mtngtools/mtng-dotnet-mono#372, #378, ADR-0024).
 
-`src/shared/` is where a shape used by more than one domain lives.
+`src/shared/` is where a **vocabulary** more than one domain assembles from lives — a module at a
+time, not a shape at a time.
 
+- **The unit is the module, not the individual export.** `timing.ts` is the presentation-timing
+  vocabulary; `presentation-context.ts` is the `SelfContained` dialect's groups. A module earns
+  its place here when the domains genuinely share it, and everything belonging to that vocabulary
+  then lives in it — including exports that, on any given day, only one domain happens to import.
+  `timerCue` is the standing case: `phaseCue` is the authored cue and `timerCue` is what the timer
+  reduces it *into*, so they are two halves of one concept. Only the timer domain imports the
+  reduced half today (mtngtools/mtng-dotnet-mono#382 moved the authored half into the group), and
+  splitting the pair across two modules to track that would file one concept in two places and
+  invite the halves to drift. **Import count is evidence about a module, never a rule about an
+  export.**
 - **Not a fifth domain.** It sits *outside* `messages/` rather than beside `backdrop/`,
   `presentation/`, `timer/` and `window/`, because nothing in it is a message and nothing in it
   has a `domain` — which is a closed per-domain enum in every envelope. A folder among the
