@@ -97,6 +97,15 @@ time, not a shape at a time.
   `z.discriminatedUnion` (emits `oneOf`, which collapses to its first branch, silently dropping
   the others) and `.nullable()` (emits `anyOf [T, null]`, which becomes a junk empty class). Use
   a tagged record with `.optional()` fields instead, and enforce the invariant with `.check()`.
+- **`.default(…)` crosses the mirror, and it puts the field in `required`** — both verified
+  against the generators, not assumed. NJsonSchema turns a schema `default` into a **C# property
+  initializer** (`public string NoneColor { get; set; } = "#43A047";`), so a defaulted value has
+  exactly **one home — here** — instead of one copy per language, and a field absent from the JSON
+  lands on that same value on the .NET side. The cost is that Zod's draft-7 emitter describes the
+  **output** type, where a defaulted field is always present: it emits `default` *and* lists the
+  field in `required`. That is the io-mode behavior, not a claim that senders must spell the value
+  out — `.parse()` fills it in on the TS side. Prefer `.default()` over documenting a default in
+  prose and re-typing it in C#.
 
 ## Generate the JSON Schema
 
