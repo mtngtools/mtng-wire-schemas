@@ -30,6 +30,9 @@ either mono's build. (Same discipline as the `stable` / `experimental` areas in
 mtng-wire-schemas/
   src/                       # Zod v4 source of truth (authored)
     index.ts                 #   the allow-list: only messages exported here are dual-language
+    shared/                  #   shapes MORE THAN ONE DOMAIN assembles from — see below
+      timing.ts              #     timerCue, timerHint, load
+      presentation-context.ts#     the SelfContained dialect's block/session/timer/files groups
     messages/                #   one file per message contract, or one folder per domain
       backdrop/              #   the floor app's set: commands, events + shared pieces
       presentation/          #   the Present manager's pointer: event, rpc + shared pieces
@@ -44,12 +47,37 @@ mtng-wire-schemas/
   package.json               # Zod SoT + `generate` / `typecheck` / `check` scripts
 ```
 
+### `src/shared/` — cross-domain shapes
+
+Until the `SelfContained` presentation dialect landed, every shape belonged to exactly one domain
+and lived in that domain's `common.ts`. That is no longer true: `presentation.state-changed`
+carries the timer's cue and hint vocabulary, and `timer.state-changed` / `timer.cue-fired` carry
+the presentation domain's context back out (mtngtools/mtng-dotnet-mono#372, #378, ADR-0024).
+
+`src/shared/` is where a shape used by more than one domain lives.
+
+- **Not a fifth domain.** It sits *outside* `messages/` rather than beside `backdrop/`,
+  `presentation/`, `timer/` and `window/`, because nothing in it is a message and nothing in it
+  has a `domain` — which is a closed per-domain enum in every envelope. A folder among the
+  domains would say the opposite.
+- **Mutual imports were not the alternative.** Both `common.ts` files build Zod schemas at module
+  top level, so importing each other is a circular *runtime* dependency in which one side
+  evaluates to `undefined` depending on entry order. Duplicating the shapes was also rejected: it
+  drifts, and the generator would emit two C# classes for one concept.
+- **Nothing here is allow-listed.** These are pieces, and each mirrors into C# scoped to the
+  message that embeds it. `WindowSlotContent` is the one non-message export, and only because it
+  is a closed union the TS side has to narrow on.
+
 ### Authoring rules
 
 - **Every allow-listed export is a Zod schema with a PascalCase name.** The export name becomes
   the schema file name (kebab-cased) *and* the C# class name — renaming an export renames both.
 - **Document fields with `.describe()`, not JSDoc.** Only `.describe()` reaches the emitted JSON
   Schema, and from there the generated C# XML doc comments.
+- **A `.describe()` on a wrapper replaces the one on the schema it wraps.**
+  `group.optional().describe(…)` emits only the outer text, so a shape documented where it is
+  defined and described again where it is embedded ships the second and silently loses the
+  first — invariants included. Document a shape once, on the shape.
 - **Envelope fields (`type` / `domain` / `kind`) use single-value `z.enum([...])`, never
   `z.literal(...)`.** `const` erases the literal on the way to C#; a one-member enum compiles it
   into the mirror. This is what keeps a routing key from drifting off its schema.
