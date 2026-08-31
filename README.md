@@ -35,7 +35,8 @@ mtng-wire-schemas/
       presentation-context.ts#     the SelfContained dialect's block/session/timer/files groups
     messages/                #   one file per message contract, or one folder per domain
       backdrop/              #   the floor app's set: commands, events + shared pieces
-      presentation/          #   the Present manager's pointer: event, rpc + shared pieces
+      presentation/          #   the Present manager's set: the pointer + its navigation echo,
+                             #   the snapshot rpc, and 6 commands (enter/exit, four goto-*)
       timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces
       window/                #   the window domain's dual slices: the slot-content trio, the
                              #   configuration surface's simple messages (hide/show,

@@ -335,7 +335,7 @@
               "path"
             ],
             "additionalProperties": false,
-            "description": "One presentation computer and the file it has open: an opaque instanceId plus the path object. An instance with nothing open is reported by absence from the array, not by an entry."
+            "description": "One presentation computer and the file it has open: an opaque instanceId plus the path object. An instance with nothing open is reported by absence — from the pointer's files array, or by omitting the singular file a command carries — never by an entry with an empty path."
           },
           "description": "SelfContained only: the presentation computers with a file open for this presentation, one entry each. Absent in a Linked room. instanceId APPEARS ONCE ACROSS THE ARRAY — a further report from an instance already present REPLACES that instance's entry rather than adding a second one. Only the files repeat: the room is in one presentation, and these machines have files open for it. An empty array is not a state — a room with nothing open omits the member."
         }

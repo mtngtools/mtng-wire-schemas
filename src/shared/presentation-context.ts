@@ -255,8 +255,9 @@ export const presentationFile = z
   })
   .describe(
     "One presentation computer and the file it has open: an opaque instanceId plus the path " +
-      "object. An instance with nothing open is reported by absence from the array, not by an " +
-      "entry.",
+      "object. An instance with nothing open is reported by absence — from the pointer's files " +
+      "array, or by omitting the singular file a command carries — never by an entry with an " +
+      "empty path.",
   );
 
 /**

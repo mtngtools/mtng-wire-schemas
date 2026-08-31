@@ -60,10 +60,37 @@ export {
 
 // presentation domain — the Present manager's pointer and its snapshot RPC, both dual-language
 // (mtngtools/mtng-dotnet-mono#336, contract ratified by #175). TS displays subscribe here for
-// presentation context and snapshot over the same connect protocol they use everywhere. No
-// commands: progression control is still open fog on map #42.
+// presentation context and snapshot over the same connect protocol they use everywhere.
 export { PresentationStateChanged } from "./messages/presentation/events.ts";
 export { PresentationCurrentState } from "./messages/presentation/rpc.ts";
+
+// presentation domain — the command set and its one echo (mtngtools/mtng-dotnet-mono#383, specced
+// by #374). All seven dual, ruled per message:
+//
+//   - enter is the SelfContained report path, and ADR-0024 defines that dialect around producers
+//     who are deliberately NOT version-pinned to the room. A third-party producer holding a deck
+//     open is as likely .NET on the lectern as it is TS, so the report has to be sayable from
+//     both sides or the dialect only half exists.
+//   - exit is enter's pair. Splitting them would let a client say the room entered a
+//     presentation and not that it left one — a state it could enter and never escape.
+//   - the four goto-* come from an operator control surface, which is TS, and are consumed by
+//     the .NET Present manager. That is the cross-language case exactly, and it is the reasoning
+//     #315 gave the window sugar verbs (hide/show) for the same shape of traffic.
+//   - slide-navigated is the acknowledgement of those four. The backdrop set's rule applies
+//     unchanged: a commands-dual/events-single split would let a console send goto-next-slide
+//     and not read the echo telling it the move happened.
+//
+// Nothing here strains the mirror — every member is a scalar, a closed enum, or the same
+// presentationFile the pointer already ships.
+export {
+  PresentationEnter,
+  PresentationExit,
+  PresentationGotoFirstSlide,
+  PresentationGotoLastSlide,
+  PresentationGotoNextSlide,
+  PresentationGotoPreviousSlide,
+} from "./messages/presentation/commands.ts";
+export { PresentationSlideNavigated } from "./messages/presentation/events.ts";
 
 // timer domain — the Timer manager's message set: 2 events, 1 rpc, 7 commands.
 export { TimerCueFired, TimerStateChanged } from "./messages/timer/events.ts";
