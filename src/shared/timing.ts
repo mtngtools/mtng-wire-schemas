@@ -7,12 +7,19 @@ import { z } from "zod";
  * outside `src/messages/` rather than beside the domains, where it would read as a fifth one
  * (mtngtools/mtng-dotnet-mono#380).
  *
- * **Why these three are shared rather than imported across the domains.** A `SelfContained`
- * room's `presentation.state-changed` carries a `timer` group made of exactly these
+ * **Why this vocabulary is shared rather than imported across the domains.** A `SelfContained`
+ * room's `presentation.state-changed` carries a `timer` group built from it
  * (mtngtools/mtng-dotnet-mono#372), and the timer's own events carry the presentation domain's
  * groups back out (#378). The dependency therefore runs both ways, and both `common.ts` files
  * build Zod schemas at module top level — so mutual imports would be a circular *runtime*
  * dependency in which one side evaluates to `undefined` depending on entry order.
+ *
+ * **The module is the unit, not the individual export.** `timerCue` lives here even though only
+ * the timer domain imports it today: it is what {@link phaseCue} reduces *into*, and the two are
+ * halves of one concept (#382). Filing the authored half here and the reduced half in
+ * `messages/timer/common.ts` would split one concept across two modules and invite the halves to
+ * drift. Import count is evidence about a module, never a rule about an export — see the repo
+ * README.
  *
  * **Nothing here is allow-listed.** These are pieces, not messages; each mirrors into C# scoped
  * to the message that embeds it (`PresentationStateChangedPhaseCues`, `TimerStateChangedCues`,
