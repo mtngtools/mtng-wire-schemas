@@ -1,8 +1,25 @@
 import { z } from "zod";
-import { timerClock, timerCue, timerCueFamily, timerEnvelope } from "./common.ts";
+import {
+  duplicateInstanceIds,
+  presentationContext,
+} from "../../shared/presentation-context.ts";
+import { timerCue } from "../../shared/timing.ts";
+import { timerClock, timerCueFamily, timerEnvelope } from "./common.ts";
 
 /**
  * Timer events — exchange `mtng.events`, routing key `timer.<name>.<target>`.
+ *
+ * **Both events carry the presentation domain's four groups in a `SelfContained` room**
+ * (mtngtools/mtng-dotnet-mono#378, ADR-0024). A `SelfContained` room has no Meeting data manager,
+ * so `presentationId` on a timer message points at nothing a consumer can resolve — either the
+ * context rides along or it is unreachable. In a `Linked` room all four are absent and these
+ * messages stay exactly as #53 authored them: there the join target exists, and a second copy of
+ * that data on the bus's highest-frequency traffic is the single-source rule's exact prohibition.
+ *
+ * **Both events, not only `cue-fired`.** Carrying context on the occasional message and leaving
+ * the frequent `state-changed` thin would leave a display watching only `state-changed` with
+ * nothing to join against — fixing the frequency cost by reintroducing the problem for half of
+ * consumers.
  */
 
 /**
@@ -64,11 +81,25 @@ export const TimerStateChanged = z
           "displays needing presentation context subscribe to the Present manager, not to the " +
           "timer. Absent on a cleared or directly-driven timer.",
       ),
+    ...presentationContext(),
+  })
+  .check((ctx) => {
+    for (const duplicate of duplicateInstanceIds(ctx.value.files)) {
+      ctx.issues.push({
+        code: "custom",
+        input: ctx.value,
+        path: ["files"],
+        message: `instanceId '${duplicate}' appears more than once — one entry per instance`,
+      });
+    }
   })
   .describe(
     "A full, self-contained snapshot of one timer instance, broadcast per transition rather " +
       "than per second: clients interpolate between anchors. The same shape answers the " +
-      "current-state RPC, so a snapshot and a delta are applied by the same code.",
+      "current-state RPC, so a snapshot and a delta are applied by the same code. In a " +
+      "SelfContained room it also carries the presentation domain's four groups, because there " +
+      "is no Meeting data manager to resolve presentationId against; in a Linked room all four " +
+      "are absent.",
   );
 
 export type TimerStateChanged = z.infer<typeof TimerStateChanged>;
@@ -90,10 +121,23 @@ export const TimerCueFired = z
       .string()
       .min(1)
       .describe("The cue that fired, matching its label in the timer's cue set."),
+    ...presentationContext(),
+  })
+  .check((ctx) => {
+    for (const duplicate of duplicateInstanceIds(ctx.value.files)) {
+      ctx.issues.push({
+        code: "custom",
+        input: ctx.value,
+        path: ["files"],
+        message: `instanceId '${duplicate}' appears more than once — one entry per instance`,
+      });
+    }
   })
   .describe(
     "A cue was crossed. A crossing is not a transition, so without this nothing would tell a " +
-      "basic display that a cue fired between two anchors — it is the 'furthestCue advanced' push.",
+      "basic display that a cue fired between two anchors — it is the 'furthestCue advanced' " +
+      "push. In a SelfContained room it also carries the presentation domain's four groups, for " +
+      "the reason state-changed does; in a Linked room all four are absent.",
   );
 
 export type TimerCueFired = z.infer<typeof TimerCueFired>;

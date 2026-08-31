@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  duplicateInstanceIds,
+  presentationContext,
+} from "../../shared/presentation-context.ts";
 import { presentationEnvelope } from "./common.ts";
 
 /**
@@ -13,9 +17,12 @@ import { presentationEnvelope } from "./common.ts";
  * statement and not a delta, a broadcast and an RPC reply are the same shape applied by the
  * same code — which is why `presentation.current-state` replies with this very message.
  *
- * Thin by design: no label or title member. Displays join `presentationId` against the Meeting
- * data manager's own broadcast; the pointer says *which* presentation and *where in it*, and
- * nothing else.
+ * **Thin at the core, a superset in `SelfContained`.** The four members below are needed in both
+ * dialects and stay the always-present core; a `Linked` room sends nothing else, and displays
+ * join `presentationId` against the Meeting data manager's own broadcast. A `SelfContained` room
+ * has no such manager, so the context it would have joined for rides the four optional groups
+ * instead (ADR-0024; mtngtools/mtng-dotnet-mono#372). The core stays thin either way — what
+ * changes is whether anything else is present at all.
  *
  * A **tagged record rather than a discriminated union**, because `oneOf` does not survive the
  * mirror to C# — see the README. The invariant the union would have carried — the body is
@@ -66,11 +73,39 @@ export const PresentationStateChanged = z
           "retained snapshot rather than re-minted. A re-minted stamp is monotonic and " +
           "plausible, and silently breaks every consumer keying on this.",
       ),
+    ...presentationContext(),
   })
   .check((ctx) => {
-    const { phase, presentationId, actualPrStart } = ctx.value;
+    const { phase, presentationId, actualPrStart, block, session, timer, files } = ctx.value;
+
+    for (const duplicate of duplicateInstanceIds(files)) {
+      ctx.issues.push({
+        code: "custom",
+        input: ctx.value,
+        path: ["files"],
+        message: `instanceId '${duplicate}' appears more than once — one entry per instance`,
+      });
+    }
 
     if (phase === "none") {
+      // The groups describe a presentation, and 'none' is the absence of one — so a room in
+      // 'none' carries none of them, in either dialect.
+      for (const [name, group] of [
+        ["block", block],
+        ["session", session],
+        ["timer", timer],
+        ["files", files],
+      ] as const) {
+        if (group !== undefined) {
+          ctx.issues.push({
+            code: "custom",
+            input: ctx.value,
+            path: [name],
+            message: `phase 'none' carries no ${name}`,
+          });
+        }
+      }
+
       if (presentationId !== undefined) {
         ctx.issues.push({
           code: "custom",
@@ -115,7 +150,9 @@ export const PresentationStateChanged = z
       "published on every transition (entering 'none' included) and on boot re-broadcast. The " +
       "same shape answers the current-state RPC, so a snapshot and a transition are applied by " +
       "the same code. presentationId and actualPrStart are present iff phase ≠ none; enteredAt " +
-      "is always present and is the equality key for 'same state'.",
+      "is always present and is the equality key for 'same state'. A SelfContained room adds the " +
+      "four optional groups — block, session, timer and files — which a Linked room never sends " +
+      "and which phase 'none' never carries.",
   );
 
 export type PresentationStateChanged = z.infer<typeof PresentationStateChanged>;

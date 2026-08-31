@@ -6,6 +6,10 @@ import { z } from "zod";
  * Nothing here is a message and nothing here is exported from the allow-list barrel — these
  * are the pieces every timer message is assembled from.
  *
+ * **`timerCue` is no longer one of them** — it moved to [`src/shared/timing.ts`](../../shared/timing.ts)
+ * when the presentation domain's `timer` group started carrying it too
+ * (mtngtools/mtng-dotnet-mono#380). What is left here is what only this domain uses.
+ *
  * The authoring rules these follow (`.describe()` over JSDoc, `z.enum` over `z.literal`, no
  * `z.discriminatedUnion`, no `.nullable()`) are in the repo README, with the generator output
  * that settles each one.
@@ -46,27 +50,6 @@ export const timerEnvelope = <TType extends string, TKind extends "event" | "com
         "well-known key of the standing one.",
     ),
 });
-
-/**
- * A cue threshold on the timer's own clock: fire `label` when the clock descends past
- * `atDuration`. Generic — resolved from presentation config at load, then frozen, so nothing
- * downstream re-evaluates the symbolic form.
- */
-export const timerCue = z
-  .strictObject({
-    label: z
-      .string()
-      .min(1)
-      .describe(
-        "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim in firedCues, " +
-          "furthestCue and cue-fired. A label that begins with a cue family's name belongs to " +
-          "that family — 'warn2' is a 'warn'.",
-      ),
-    atDuration: z
-      .int()
-      .describe("Clock value the cue fires at, in signed whole seconds — negative in overtime."),
-  })
-  .describe("A cue threshold on the timer's clock: fire when the clock descends past atDuration.");
 
 /**
  * The closed vocabulary of cue **families** — the coarse, ordered signal a display switches on.

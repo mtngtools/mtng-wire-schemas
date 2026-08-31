@@ -133,6 +133,197 @@
         "label": {
           "description": "What the timer is counting, e.g. the presentation phase's label. Thin by design — displays needing presentation context subscribe to the Present manager, not to the timer. Absent on a cleared or directly-driven timer.",
           "type": "string"
+        },
+        "block": {
+          "type": "object",
+          "properties": {
+            "prTitle": {
+              "description": "The presentation's title, for displays that have nothing to join against.",
+              "type": "string",
+              "minLength": 1
+            },
+            "prStart": {
+              "description": "The block's SCHEDULED start, ISO-8601 UTC. Not actualPrStart, which is the live fact and sits on the message's always-present core.",
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            },
+            "prEnd": {
+              "description": "The block's SCHEDULED end, ISO-8601 UTC. With prStart it is the block window a percent-unit timer hint threshold is a percentage of.",
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            }
+          },
+          "additionalProperties": false,
+          "description": "SelfContained only: the presentation block — its title for displays, and its scheduled window for the timer's block-relative math. Absent in a Linked room, where the Meeting data manager holds it. Every member is optional and at least one is present; prEnd carries prStart."
+        },
+        "session": {
+          "type": "object",
+          "properties": {
+            "ssId": {
+              "description": "Opaque id of the session. MATCHED BYTE-WISE, NEVER PARSED, like presentationId: no structure is promised and equality is the only operation defined on it.",
+              "type": "string",
+              "minLength": 1
+            },
+            "ssTitle": {
+              "description": "The session's title, for displays.",
+              "type": "string",
+              "minLength": 1
+            },
+            "ssStart": {
+              "description": "The session's scheduled start, ISO-8601 UTC.",
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            },
+            "ssEnd": {
+              "description": "The session's scheduled end, ISO-8601 UTC.",
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            }
+          },
+          "additionalProperties": false,
+          "description": "SelfContained only: the session containing the block. Absent in a Linked room, where the Meeting data manager holds it. Every member is optional and at least one is present; ssEnd carries ssStart."
+        },
+        "timer": {
+          "type": "object",
+          "properties": {
+            "cues": {
+              "description": "The resolved cue set for the phase — the same shape the timer re-broadcasts on timer.state-changed, so it is carried through rather than re-derived. Thresholds are concrete clock values: a producer resolves its own symbolic form before publishing.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim in firedCues, furthestCue and cue-fired. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'."
+                  },
+                  "atDuration": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Clock value the cue fires at, in signed whole seconds — negative in overtime."
+                  }
+                },
+                "required": [
+                  "label",
+                  "atDuration"
+                ],
+                "additionalProperties": false,
+                "description": "A cue threshold on the timer's clock: fire when the clock descends past atDuration."
+              }
+            },
+            "timerHints": {
+              "description": "The resolved hint set for the phase, in authored order — later qualifying entries win over earlier ones for the same bound.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Which hint this is. OPEN VOCABULARY, not an enum: an unrecognised kind is a custom entry to be ignored, never a reason to reject the message. The four kinds this room implements are 'remaining' (switch the basis from the phase's own calculated minutes to block-remaining), 'floor' (a minimum duration), 'cap' (a maximum duration) and 'protectQA' (talk-only, valueless: cap talk at its own calculated minutes so it cannot borrow qa's time)."
+                  },
+                  "unit": {
+                    "description": "The unit of value; absent means 'minutes'. A percent floor/cap is of the phase's initial calculated minutes — the stable, pre-hint duration, not the live 'remaining' basis and not a cue's starting timer value.",
+                    "type": "string",
+                    "enum": [
+                      "minutes",
+                      "percent"
+                    ]
+                  },
+                  "value": {
+                    "description": "The floor/cap magnitude. Present iff kind is 'floor' or 'cap', and absent on every other kind including 'protectQA', which is a valueless cap-producer.",
+                    "type": "number"
+                  },
+                  "whenUnits": {
+                    "description": "The one unit shared by all three when* thresholds below; absent means 'minutes'. A percent here is of the presentation BLOCK (prEnd - prStart), not of the phase. Closed, unlike kind: a new unit is a spec change, not a producer extension. Units cannot be mixed across the three, which is never a real need since all three are block-relative.",
+                    "type": "string",
+                    "enum": [
+                      "minutes",
+                      "percent"
+                    ]
+                  },
+                  "whenOverBy": {
+                    "description": "Cumulative presentation overage, against the scheduled prEnd, required for this entry to qualify.",
+                    "type": "number"
+                  },
+                  "whenPrEarlyBy": {
+                    "description": "How early the block must have started for this entry to qualify.",
+                    "type": "number"
+                  },
+                  "whenPrLateBy": {
+                    "description": "How late the block must have started for this entry to qualify.",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "description": "One timer hint: how the phase's actual duration behaves under overrun. Evaluated once, at phase load, to set the phase's starting timer value — never re-evaluated thereafter. kind is an open vocabulary so an unrecognised entry degrades to ignored rather than rejecting the message; value is present iff kind is 'floor' or 'cap'."
+              }
+            },
+            "load": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "auto-paused",
+                "clear",
+                "ignore",
+                "next"
+              ],
+              "description": "Authored intent for what a timer does when this phase becomes current: 'auto' sets the phase and runs it, 'auto-paused' sets and holds it (a 'remaining'-basis phase runs anyway — it cannot be staged), 'clear' clears the timer, 'ignore' does nothing, and 'next' sets and holds the NEXT phase as a preview. The runtime precedence below this value — the host phaseLoading rung, the timerAutomation kill-switch — is the Timer manager's and is not on the wire."
+            }
+          },
+          "additionalProperties": false,
+          "description": "SelfContained only: what the producer already resolved for the timer — the phase's cue set, its hint set, and its load directive. Timer manager only. Absent in a Linked room, where the Timer manager resolves them itself. Every member is optional and at least one is present."
+        },
+        "files": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instanceId": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Opaque id of the presentation instance — the machine or process with the file open. MATCHED BYTE-WISE, NEVER PARSED, like presentationId, and loose on purpose: it exists so a producer can reconcile with itself, not so anything routes on it. It is the files array's uniqueness key."
+              },
+              "path": {
+                "type": "object",
+                "properties": {
+                  "partialPath": {
+                    "description": "The file's path relative to the producer's own presentation root.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "presentationSubDirectory": {
+                    "description": "The sub-directory the file sits in, below that root.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fullPath": {
+                    "description": "The file's absolute path on the instance's own filesystem.",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Three spellings of one location, none of them required on its own: a producer publishes whichever it holds, and at least one is present. Nothing on the backbone opens these — actuation stops at the Present manager — so they are for launch coordination and reconciliation inside the host's own implementation."
+              }
+            },
+            "required": [
+              "instanceId",
+              "path"
+            ],
+            "additionalProperties": false,
+            "description": "One presentation computer and the file it has open: an opaque instanceId plus the path object. An instance with nothing open is reported by absence from the array, not by an entry."
+          },
+          "description": "SelfContained only: the presentation computers with a file open for this presentation, one entry each. Absent in a Linked room. instanceId APPEARS ONCE ACROSS THE ARRAY — a further report from an instance already present REPLACES that instance's entry rather than adding a second one. Only the files repeat: the room is in one presentation, and these machines have files open for it. An empty array is not a state — a room with nothing open omits the member."
         }
       },
       "required": [
@@ -150,7 +341,7 @@
         "furthestCueFamily"
       ],
       "additionalProperties": false,
-      "description": "A full, self-contained snapshot of one timer instance, broadcast per transition rather than per second: clients interpolate between anchors. The same shape answers the current-state RPC, so a snapshot and a delta are applied by the same code."
+      "description": "A full, self-contained snapshot of one timer instance, broadcast per transition rather than per second: clients interpolate between anchors. The same shape answers the current-state RPC, so a snapshot and a delta are applied by the same code. In a SelfContained room it also carries the presentation domain's four groups, because there is no Meeting data manager to resolve presentationId against; in a Linked room all four are absent."
     }
   }
 }

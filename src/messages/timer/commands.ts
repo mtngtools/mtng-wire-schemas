@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { timerCue, timerEnvelope } from "./common.ts";
+import { timerCue } from "../../shared/timing.ts";
+import { timerEnvelope } from "./common.ts";
 
 /**
  * Timer commands — exchange `mtng.commands`, routing key `timer.<name>.<target>`.
