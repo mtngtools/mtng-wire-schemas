@@ -48,16 +48,82 @@
             "contentType": {
               "type": "string",
               "enum": [
-                "static"
+                "static",
+                "timer"
               ],
-              "description": "Which content this slot should hold. 'static' is the one reserved value — no payload, routed to the paint path (the slot renders its resolved static content). Every non-reserved value is exactly an IComponentRegistry key on the host side, one name end to end. Closed: an undeclared value fails schema validation at the edge and never reaches the registry."
+              "description": "Which content this slot should hold. 'static' is the one reserved value — no payload, routed to the paint path (the slot renders its resolved static content). Every non-reserved value is exactly an IComponentRegistry key on the host side, one name end to end, and carries its config in the field of the same name. Closed: an undeclared value fails schema validation at the edge and never reaches the registry."
+            },
+            "timer": {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "default": "presentation-phase",
+                  "description": "Which timer instance to display — the <target> routing segment of the timer messages this component subscribes to. Defaults to 'presentation-phase', the well-known key of the standing timer; configurable so future custom timer keys need no rework.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "noneColor": {
+                  "default": "#43A047",
+                  "description": "Countdown color before any cue family has fired. Default: green.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "warnColor": {
+                  "default": "#FFB300",
+                  "description": "Countdown color once a 'warn'-family cue fires. Default: amber.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "timesUpColor": {
+                  "default": "#B23B3B",
+                  "description": "Countdown color once a 'timesUp'-family cue fires. Default: muted red.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "overColor": {
+                  "default": "#B23B3B",
+                  "description": "Countdown color in overtime. Default: the same muted red as timesUpColor — the pulse, not a new hue, is what marks overtime.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "clearedColor": {
+                  "default": "#9E9E9E",
+                  "description": "Color of the wall clock shown in the cleared state, which is also the fallback of last resort before any usable timer state has arrived. Default: gray.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "pulseOnOver": {
+                  "default": true,
+                  "description": "Whether the overtime display pulses — a subtle pulse, never a flash. On by default.",
+                  "type": "boolean"
+                },
+                "transitionMs": {
+                  "default": 300,
+                  "description": "How long a view takes to cross-fade between stage colors, in whole MILLISECONDS — the unit is in the name because every other duration in this contract counts in seconds. 0 switches instantly.",
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "target",
+                "noneColor",
+                "warnColor",
+                "timesUpColor",
+                "overColor",
+                "clearedColor",
+                "pulseOnOver",
+                "transitionMs"
+              ],
+              "additionalProperties": false,
+              "description": "The timer component's config: which timer it watches, the stage palette it renders with, and its transition effects. Present iff contentType is 'timer'."
             }
           },
           "required": [
             "contentType"
           ],
           "additionalProperties": false,
-          "description": "A slot's desired content, discriminated on contentType. Closed: 'static' (reserved, no payload — render the slot's resolved static content) is the only member until component members land, each carrying its component's config. Never null — a slot with no component mounted is set to static, not to nothing."
+          "description": "A slot's desired content, discriminated on contentType. Closed: 'static' (reserved, no payload — render the slot's resolved static content) and 'timer' (the timer component, carrying its config in the 'timer' field). A component member's config field is present iff its contentType is selected. Never null — a slot with no component mounted is set to static, not to nothing."
         }
       },
       "required": [
