@@ -1,14 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/PresentationCurrentState",
+  "$ref": "#/definitions/PresentationExit",
   "definitions": {
-    "PresentationCurrentState": {
+    "PresentationExit": {
       "type": "object",
       "properties": {
         "type": {
           "type": "string",
           "enum": [
-            "current-state"
+            "exit"
           ],
           "description": "The message name — <name> in the routing key."
         },
@@ -22,7 +22,7 @@
         "kind": {
           "type": "string",
           "enum": [
-            "rpc"
+            "command"
           ],
           "description": "Which exchange carries this message. Never reaches the routing key."
         },
@@ -40,7 +40,7 @@
         "ts"
       ],
       "additionalProperties": false,
-      "description": "Ask the room for its presentation pointer. Envelope-only — presentation state is room-singular, so there is nothing to address. The reply is a PresentationStateChanged, identical to the broadcast, so a snapshot and a transition are applied by the same code."
+      "description": "Leave the presentation — takes phase to 'none'. Envelope-only: 'none' is room-wide and carries no presentationId, no actualPrStart and none of the four groups, so there is nothing to say beyond the name. Acknowledged by the resulting presentation.state-changed."
     }
   }
 }

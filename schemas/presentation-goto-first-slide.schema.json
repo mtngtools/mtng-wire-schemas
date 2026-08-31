@@ -1,14 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$ref": "#/definitions/PresentationCurrentState",
+  "$ref": "#/definitions/PresentationGotoFirstSlide",
   "definitions": {
-    "PresentationCurrentState": {
+    "PresentationGotoFirstSlide": {
       "type": "object",
       "properties": {
         "type": {
           "type": "string",
           "enum": [
-            "current-state"
+            "goto-first-slide"
           ],
           "description": "The message name — <name> in the routing key."
         },
@@ -22,7 +22,7 @@
         "kind": {
           "type": "string",
           "enum": [
-            "rpc"
+            "command"
           ],
           "description": "Which exchange carries this message. Never reaches the routing key."
         },
@@ -31,6 +31,11 @@
           "format": "date-time",
           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
           "description": "The PUBLISH instant — when this message went out, ISO-8601 UTC. Not the transition instant: a boot re-broadcast of an unchanged state refreshes ts and leaves enteredAt untouched. Which of the two a consumer's freshness logic reads is that consumer's decision, not this contract's."
+        },
+        "instanceId": {
+          "description": "Which presentation instance this concerns — the machine or process with the file open. MATCHED BYTE-WISE, NEVER PARSED, like presentationId, and loose on purpose: it exists so a producer can reconcile with itself, not so anything routes on it. It is the same id the pointer's files array is keyed by. Absent addresses the room's presentation instance; which one a multi-lectern room means is the driver's, because actuation stops at the Manager.",
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -40,7 +45,7 @@
         "ts"
       ],
       "additionalProperties": false,
-      "description": "Ask the room for its presentation pointer. Envelope-only — presentation state is room-singular, so there is nothing to address. The reply is a PresentationStateChanged, identical to the broadcast, so a snapshot and a transition are applied by the same code."
+      "description": "Jump the presentation to its first slide. Echoed by presentation.slide-navigated with navigation 'first'."
     }
   }
 }

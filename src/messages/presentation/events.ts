@@ -3,7 +3,7 @@ import {
   duplicateInstanceIds,
   presentationContext,
 } from "../../shared/presentation-context.ts";
-import { presentationEnvelope } from "./common.ts";
+import { addressedInstance, presentationEnvelope } from "./common.ts";
 
 /**
  * Presentation events — exchange `mtng.events`, routing key `presentation.<name>`.
@@ -156,3 +156,45 @@ export const PresentationStateChanged = z
   );
 
 export type PresentationStateChanged = z.infer<typeof PresentationStateChanged>;
+
+/**
+ * `presentation.slide-navigated` — the navigation echo.
+ *
+ * Published so others can react, and usable as the acknowledgement of a `goto-*` command. It is
+ * **informational**: an observation, not something anyone on the backbone executes — actuation
+ * stopped at the Manager (mtngtools/mtng-dotnet-mono#375).
+ *
+ * **NOT RETAINED, AND NOT RE-BROADCAST ON BOOT.** This is the one presentation message the
+ * recovery pattern does not cover, and the reason is structural rather than a policy choice:
+ * `enter` and `exit` fold into the pointer, so a restarting Manager republishes them by
+ * republishing its state, but the four `goto-*` commands fold into *nothing*. There is no slide
+ * in this model and so no slide position to restore — a retained echo would assert a navigation
+ * that is not happening, at a `ts` that is not now.
+ *
+ * **One event where there are four commands.** The commands split into four routing keys because
+ * a key is the authorization subject, and that split is a write-side concern; a subscriber needs
+ * no matching fan-out, so `navigation` carries which one fired.
+ */
+export const PresentationSlideNavigated = z
+  .strictObject({
+    ...presentationEnvelope("slide-navigated", "event"),
+    navigation: z
+      .enum(["next", "previous", "first", "last"])
+      .describe(
+        "Which navigation was actuated — the <value> of the goto-<value>-slide command this " +
+          "echoes. One event carries all four because the commands' split into four routing " +
+          "keys exists to make each an authorization subject, which is a write-side concern. " +
+          "Without this member a client could not tell its own goto-next-slide from another " +
+          "operator's goto-first-slide.",
+      ),
+    ...addressedInstance(),
+  })
+  .describe(
+    "The navigation echo: a goto-*-slide command was actuated. Published so others can react, " +
+      "and usable as the acknowledgement — navigation gets an echo precisely because it changes " +
+      "no state, where enter and exit are acknowledged by the pointer they change. NOT RETAINED " +
+      "AND NOT RE-BROADCAST ON BOOT: there is no slide in this model, so there is no slide " +
+      "position for a restarting manager to restore.",
+  );
+
+export type PresentationSlideNavigated = z.infer<typeof PresentationSlideNavigated>;
