@@ -15,8 +15,9 @@ import { z } from "zod";
  * dependency in which one side evaluates to `undefined` depending on entry order.
  *
  * **Nothing here is allow-listed.** These are pieces, not messages; each mirrors into C# scoped
- * to the message that embeds it (`PresentationStateChangedTimerCues`,
- * `TimerStateChangedTimerCues`, …) per the Core.Wire spec's nested-type rule. `WindowSlotContent`
+ * to the message that embeds it (`PresentationStateChangedPhaseCues`, `TimerStateChangedCues`,
+ * …) per the Core.Wire spec's nested-type rule — message plus the property's own name, not its
+ * full path, so the name follows the property rather than where it sits. `WindowSlotContent`
  * is exported from the barrel because it is a closed union the TS side has to narrow on; none of
  * these is a union, so exporting them would only add duplicate top-level definitions to a surface
  * the README asks to keep small.
@@ -55,6 +56,71 @@ export const timerCue = z
       .describe("Clock value the cue fires at, in signed whole seconds — negative in overtime."),
   })
   .describe("A cue threshold on the timer's clock: fire when the clock descends past atDuration.");
+
+/**
+ * One cue as **authored on a phase**, before the timer reduces it — a `SelfContained` producer's
+ * Resolved-tier output. Mirrors upstream's `PresentationPhaseCue` field for field.
+ *
+ * **Symbolic, and that is the whole point.** `atUnits: 'percent'` measures `|at|` against the
+ * phase's *starting timer value* — the value on the timer when the phase begins, after the timer
+ * applies any `remaining` basis-switch and any up-front `floor`/`cap`. That denominator does not
+ * exist until the phase starts, so a producer **cannot** compute the concrete threshold and does
+ * not try: it publishes what was authored and the Timer manager reduces it at load. The Runtime
+ * tier is the Timer manager's in *both* dialects; `SelfContained` moves only the **Resolved**
+ * tier — deref the refs, apply the preset, hand over inline arrays — off the room
+ * (mtngtools/mtng-dotnet-mono#382).
+ *
+ * Contrast {@link timerCue}, the **reduced** form the timer broadcasts as its own state: one
+ * signed clock value, with `anchor` already collapsed into its sign.
+ *
+ * **`label` where upstream spells it `kind` — a deliberate divergence.** This wire has called the
+ * string `label` since 0.5.0 and the cue-family prefix rule binds to that spelling; adopting
+ * upstream's here would rename one string midway through its own pipeline, producer to
+ * `furthestCue`. The divergence is in the name only — the meaning is upstream's exactly.
+ */
+export const phaseCue = z
+  .strictObject({
+    label: z
+      .string()
+      .min(1)
+      .describe(
+        "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim into the reduced " +
+          "cue the timer broadcasts. A label that begins with a cue family's name belongs to " +
+          "that family — 'warn2' is a 'warn'. Consumer-facing only: it plays no part in the " +
+          "timing calculation. (Upstream spells this field 'kind'.)",
+      ),
+    anchor: z
+      .enum(["start", "end"])
+      .optional()
+      .describe(
+        "Which end of the phase 'at' is measured from; absent means 'end'. Load-bearing " +
+          "together with the sign of 'at', never inferred from it: 'end' fires before the end " +
+          "on a positive value and after it on a negative one, 'start' fires after the start " +
+          "on a positive value and before it on a negative one.",
+      ),
+    at: z
+      .number()
+      .describe(
+        "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by " +
+          "atUnits. Unlike the wire's 'minutes', a negative here is a direction and never an " +
+          "auto-mode sentinel.",
+      ),
+    atUnits: timingUnit
+      .optional()
+      .describe(
+        "The unit of |at|; absent means 'minutes'. 'percent' measures against the phase's " +
+          "STARTING TIMER VALUE — what the timer starts the phase from, after any 'remaining' " +
+          "basis-switch and up-front floor/cap. That is NOT the floor/cap basis, which is the " +
+          "phase's initial calculated minutes. There is no [0,100] clamp: a percent may resolve " +
+          "outside the phase, exactly as a large absolute value can. A percent cue is dropped " +
+          "when the starting value is 0; an absolute cue is always kept.",
+      ),
+  })
+  .describe(
+    "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete " +
+      "clock threshold at phase load, because a percent threshold's denominator is not fixed " +
+      "until the phase starts.",
+  );
 
 /**
  * One entry in a phase's timer-hint array — how the phase's actual duration behaves under

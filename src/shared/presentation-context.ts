@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { load, timerCue, timerHint } from "./timing.ts";
+import { load, phaseCue, timerHint } from "./timing.ts";
 
 /**
  * The `SelfContained` dialect's four optional groups, shared by the `presentation` and `timer`
@@ -141,7 +141,13 @@ export const sessionGroup = z
  *
  * In a `Linked` room the Timer manager runs the Resolved tier itself, walking the per-(phase,
  * prop) ladder over the schedule and the library. A `SelfContained` producer ran it upstream, so
- * these are the values rather than the refs, and the room resolves nothing.
+ * these are inline values rather than refs — and **refs are not valid anywhere in this group**,
+ * including a preset that would have carried `load`.
+ *
+ * **Only the Resolved tier moves.** The **Runtime** tier stays the Timer manager's in both
+ * dialects, because only it is time-dependent: these members are still symbolic, and the timer
+ * reduces them against live signals and the clock at phase load
+ * (mtngtools/mtng-dotnet-mono#382).
  *
  * The three arrive independently: a presentation with no cues authored is ordinary, hints are
  * rarer still, and a producer saying nothing about `load` leaves the Timer manager's own rungs —
@@ -149,13 +155,15 @@ export const sessionGroup = z
  */
 export const timerGroup = z
   .strictObject({
-    cues: z
-      .array(timerCue)
+    phaseCues: z
+      .array(phaseCue)
       .optional()
       .describe(
-        "The resolved cue set for the phase — the same shape the timer re-broadcasts on " +
-          "timer.state-changed, so it is carried through rather than re-derived. Thresholds are " +
-          "concrete clock values: a producer resolves its own symbolic form before publishing.",
+        "The phase's cue set as AUTHORED, in phaseCue's symbolic form — refs already " +
+          "dereferenced and any preset applied, but thresholds not reduced. The Timer manager " +
+          "reduces them to concrete clock values at phase load, because a percent threshold " +
+          "measures against a starting timer value that is not fixed until the phase starts. " +
+          "Deliberately NOT the reduced timerCue the timer broadcasts on timer.state-changed.",
       ),
     timerHints: z
       .array(timerHint)
@@ -167,9 +175,9 @@ export const timerGroup = z
     load: load.optional(),
   })
   .check((ctx) => {
-    const { cues, timerHints, load: loadValue } = ctx.value;
+    const { phaseCues, timerHints, load: loadValue } = ctx.value;
 
-    if (cues === undefined && timerHints === undefined && loadValue === undefined) {
+    if (phaseCues === undefined && timerHints === undefined && loadValue === undefined) {
       ctx.issues.push({
         code: "custom",
         input: ctx.value,
@@ -179,10 +187,11 @@ export const timerGroup = z
     }
   })
   .describe(
-    "SelfContained only: what the producer already resolved for the timer — the phase's cue " +
-      "set, its hint set, and its load directive. Timer manager only. Absent in a Linked room, " +
-      "where the Timer manager resolves them itself. Every member is optional and at least one " +
-      "is present.",
+    "SelfContained only: what the producer ran the Resolved tier over for the timer — the " +
+      "phase's authored cue set, its hint set, and its load directive, inline and ref-free. " +
+      "Timer manager only. Still symbolic: the timer runs the Runtime tier over them in both " +
+      "dialects. Absent in a Linked room, where the Timer manager runs the Resolved tier too. " +
+      "Every member is optional and at least one is present.",
   );
 
 /**
