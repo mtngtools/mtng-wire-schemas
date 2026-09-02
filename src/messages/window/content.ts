@@ -192,6 +192,12 @@ const faceGeometry = (face: string) => {
  * only group by naming convention — and because the stage hue moved from the digits to the
  * fill, which is a different look, not a different spelling.
  *
+ * **What the clock shows past zero is configuration** (mtngtools/mtng-dotnet-mono#489):
+ * `overMode` and `overByText`, not an inference from the cue set. Cues select a colour and the
+ * clock determines the numerals, one direction only — the alternative shipped once, gating the
+ * overtime display on the `over` *stage*, and left a timer past its deadline showing a calm
+ * `00:00` forever whenever no `over` cue was authored.
+ *
  * Every field has a `.default()`, so `{ contentType: 'timer', timer: {} }` is still a fully
  * configured component — nothing here is a required decision at authoring time.
  */
@@ -260,6 +266,28 @@ const windowSlotContentTimer = z
           "the text alone so a translucent face never pulses what sits behind it. On by " +
           "default.",
       ),
+    overMode: z
+      .enum(["zero", "countUp", "countUpWithOverByText"])
+      .default("countUpWithOverByText")
+      .describe(
+        "What the clock shows once it goes past zero. 'zero' holds 00:00; 'countUp' counts " +
+          "the overrun up; 'countUpWithOverByText' counts up under the overByText label. " +
+          "CONFIGURATION, NEVER A CUE: cues select a colour and the clock determines the " +
+          "numerals, so a timer past its deadline counts up whether or not an 'over' cue was " +
+          "ever authored. The count-up renders at the countdown's OWN size — one number at " +
+          "one size across zero, so the crossing reads as a continuation rather than a mode " +
+          "change; only the label is subtle. 'zero' is an author choosing a held number " +
+          "deliberately.",
+      ),
+    overByText: z
+      .string()
+      .default("OVER BY")
+      .describe(
+        "The label above the count-up in 'countUpWithOverByText', in a subtle, blocky, short " +
+          "font. Shown only BELOW zero — 00:00 is the countdown's last frame, so " +
+          "'OVER BY 00:00', claiming an overrun that has not happened, is never painted. " +
+          "Ignored by the other two modes.",
+      ),
     transitionMs: z
       .int()
       .min(0)
@@ -273,8 +301,8 @@ const windowSlotContentTimer = z
   })
   .describe(
     "The timer component's config: which timer it watches, the per-stage palette of digits, " +
-      "fill and rim it paints with, the per-face geometry it paints into, and its transition " +
-      "effects. Present iff contentType is 'timer'.",
+      "fill and rim it paints with, the per-face geometry it paints into, what it shows past " +
+      "zero, and its transition effects. Present iff contentType is 'timer'.",
   );
 
 /**
