@@ -1,0 +1,512 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/WindowSetWindow",
+  "definitions": {
+    "WindowSetWindow": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "set-window"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "window"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Owned by the Windows State Manager; MTWindows is a Client publishing events in a domain it does not own."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "command"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The WindowId this command is about — the <target> routing segment. config.windowId is the authoritative identity: a target naming anything else is rejected, untargeted, because neither window can honestly own the report. Bound by the Windows State Manager, never by a window."
+        },
+        "config": {
+          "type": "object",
+          "properties": {
+            "windowId": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9-]+$",
+              "description": "The window's identity — authored by whoever writes the config, never generated, and the authoritative one: a target segment naming anything else is rejected. AMQP-topic-safe [a-z0-9-], because it is a routing key segment; there is no identity beyond the string."
+            },
+            "kind": {
+              "description": "What the window is for. A screenWindow is audience-facing — frameless, no taskbar entry, nothing minimizes it. A controlWindow is the operator's — OS-decorated and in the taskbar. Absent asserts screenWindow, and a Set that changes this on an existing window is rejected: the kind decides too many defaults to switch under a window that already holds mounted components.",
+              "type": "string",
+              "enum": [
+                "screenWindow",
+                "controlWindow"
+              ]
+            },
+            "visible": {
+              "description": "Whether the window is shown. Absent asserts true. Hiding keeps every component mounted — no unmount, no state loss — which is what makes window-swap a first-class alternative to swapping a slot's contents.",
+              "type": "boolean"
+            },
+            "topMost": {
+              "description": "Whether the window stays above others. Absent asserts false.",
+              "type": "boolean"
+            },
+            "clickThrough": {
+              "description": "Whether the pointer passes through the window to whatever is behind it. Absent asserts false. True cannot coexist with pointer-dependent chrome — the contradiction is rejected on window.config-rejected rather than resolved by precedence.",
+              "type": "boolean"
+            },
+            "transparent": {
+              "description": "Whether the window's background can carry alpha. Absent asserts false, and resolved static content with alpha below opaque in a window that is not transparent is rejected — an author asking for translucency the window cannot show.",
+              "type": "boolean"
+            },
+            "decorations": {
+              "description": "Whether the OS draws a frame. Absent takes the kind default — none for a screenWindow, system for a controlWindow. Geometry is the outer rectangle either way, so toggling this preserves the bounds.",
+              "type": "string",
+              "enum": [
+                "none",
+                "system"
+              ]
+            },
+            "resizable": {
+              "description": "Whether the operator may resize the window. Absent takes the kind default.",
+              "type": "boolean"
+            },
+            "showInTaskbar": {
+              "description": "Whether the window appears in the taskbar. Absent takes the kind default.",
+              "type": "boolean"
+            },
+            "windowState": {
+              "description": "The window's minimized/maximized state. Absent asserts normal. Nothing minimizes a screenWindow; this is here for the operator's window, which the OS also drives.",
+              "type": "string",
+              "enum": [
+                "normal",
+                "minimized",
+                "maximized"
+              ]
+            },
+            "position": {
+              "type": "object",
+              "properties": {
+                "display": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "primary",
+                        "all",
+                        "other",
+                        "fromLeft",
+                        "fromTop"
+                      ],
+                      "description": "How to choose a display. 'primary' is the OS's; 'other' is any display that is not primary; 'fromLeft' and 'fromTop' count along the arrangement, taking index; 'all' spans them."
+                    },
+                    "index": {
+                      "default": 1,
+                      "description": "Which display the counting modes land on, 1-based. Ignored by 'primary' and 'all'. An index past the list is unsatisfiable and takes the fallback.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "fallback": {
+                      "description": "Where an unsatisfiable plan lands. Absent takes the kind default — offscreen for a screenWindow, lastOther for a controlWindow — which is why this is not defaulted here: the value depends on a field beside it. 'offscreen' resolves to no display at all, a computed position beyond the rightmost one.",
+                      "type": "string",
+                      "enum": [
+                        "offscreen",
+                        "primary",
+                        "firstOther",
+                        "lastOther",
+                        "firstLeft",
+                        "lastLeft",
+                        "firstTop",
+                        "lastTop"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "mode",
+                    "index"
+                  ],
+                  "additionalProperties": false,
+                  "title": "DisplaySelection",
+                  "description": "The window's display plan, resolved continuously against present hardware. A config stores this and never a display identifier, so an arrangement change re-resolves rather than silently pointing at the wrong panel. Its presence is also what makes a position display-anchored: absent with { pixels } offsets is the OsExplicit arm, and absent with any other offset anchors to the default plan, primary."
+                },
+                "displayArea": {
+                  "description": "Which rectangle of the resolved display to measure against. Absent takes the kind default — full for a screenWindow, workingArea for a controlWindow — so it is not defaulted here.",
+                  "type": "string",
+                  "enum": [
+                    "full",
+                    "workingArea"
+                  ]
+                },
+                "x": {
+                  "type": "object",
+                  "properties": {
+                    "pixels": {
+                      "description": "A fixed offset from the reference rectangle's origin, in the native tail's unit. With no position.display beside it this is the OsExplicit arm — an absolute virtual-desktop coordinate — which is the spelling a program reporting a measured rectangle writes.",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "index": {
+                      "description": "Which slice, 1-based: origin = floor((index − 1) × extent ÷ denominator). Written with denominator, never alone. { index: 3, denominator: 4 } is the third quarter — an origin at 50%.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "denominator": {
+                      "description": "How many slices the extent is divided into. Written with index, never alone.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "ordinal": {
+                      "description": "A slice named rather than counted — pure sugar, expanded at parse, so a config spelled with labels is value-equal to the same config spelled with numbers and lands on the diff's no-op. 'firstHalf' is { index: 1, denominator: 2 }.",
+                      "type": "string",
+                      "enum": [
+                        "firstHalf",
+                        "secondHalf",
+                        "firstThird",
+                        "secondThird",
+                        "thirdThird",
+                        "firstQuarter",
+                        "secondQuarter",
+                        "thirdQuarter",
+                        "fourthQuarter",
+                        "firstFifth",
+                        "secondFifth",
+                        "thirdFifth",
+                        "fourthFifth",
+                        "fifthFifth"
+                      ]
+                    },
+                    "anchor": {
+                      "description": "Where on the X axis to pin the window — the only arm that reads the size, which is what makes '100px wide, pinned to the end' expressible at no denominator. The words differ per axis so a config reads as prose.",
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "title": "PositionX",
+                  "description": "One axis of a window's position: a fixed offset, a slice of the reference rectangle, an ordinal label naming that slice, or an anchor. Exactly one arm — enforced here, and carried as structure alone into the C# mirror, which has no check to emit."
+                },
+                "y": {
+                  "type": "object",
+                  "properties": {
+                    "pixels": {
+                      "description": "A fixed offset from the reference rectangle's origin, in the native tail's unit. With no position.display beside it this is the OsExplicit arm — an absolute virtual-desktop coordinate — which is the spelling a program reporting a measured rectangle writes.",
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "index": {
+                      "description": "Which slice, 1-based: origin = floor((index − 1) × extent ÷ denominator). Written with denominator, never alone. { index: 3, denominator: 4 } is the third quarter — an origin at 50%.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "denominator": {
+                      "description": "How many slices the extent is divided into. Written with index, never alone.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "ordinal": {
+                      "description": "A slice named rather than counted — pure sugar, expanded at parse, so a config spelled with labels is value-equal to the same config spelled with numbers and lands on the diff's no-op. 'firstHalf' is { index: 1, denominator: 2 }.",
+                      "type": "string",
+                      "enum": [
+                        "firstHalf",
+                        "secondHalf",
+                        "firstThird",
+                        "secondThird",
+                        "thirdThird",
+                        "firstQuarter",
+                        "secondQuarter",
+                        "thirdQuarter",
+                        "fourthQuarter",
+                        "firstFifth",
+                        "secondFifth",
+                        "thirdFifth",
+                        "fourthFifth",
+                        "fifthFifth"
+                      ]
+                    },
+                    "anchor": {
+                      "description": "Where on the Y axis to pin the window — the only arm that reads the size, which is what makes '100px wide, pinned to the end' expressible at no denominator. The words differ per axis so a config reads as prose.",
+                      "type": "string",
+                      "enum": [
+                        "top",
+                        "center",
+                        "bottom"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "title": "PositionY",
+                  "description": "One axis of a window's position: a fixed offset, a slice of the reference rectangle, an ordinal label naming that slice, or an anchor. Exactly one arm — enforced here, and carried as structure alone into the C# mirror, which has no check to emit."
+                }
+              },
+              "additionalProperties": false,
+              "title": "Position",
+              "description": "Where the window sits: the display plan it anchors to, the area of that display it measures against, and one offset per axis. An absent axis starts at the reference rectangle's origin."
+            },
+            "size": {
+              "type": "object",
+              "properties": {
+                "width": {
+                  "type": "object",
+                  "properties": {
+                    "pixels": {
+                      "description": "A fixed extent in the native tail's unit, chrome included.",
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "numerator": {
+                      "description": "How many parts of the extent, written with denominator. Absent means 1, so { denominator: 2 } is half — deliberately not a schema default, because a default is always present in the parsed output and would then read as a second arm beside pixels.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "denominator": {
+                      "description": "How many parts the extent is divided into: size = ceil(numerator × extent ÷ denominator). A quantity, not an ordinal — { numerator: 3, denominator: 4 } is three quarters.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "quantity": {
+                      "description": "A fraction named rather than counted — pure sugar, expanded at parse. 'half' is { numerator: 1, denominator: 2 }; 'full' is the whole extent.",
+                      "type": "string",
+                      "enum": [
+                        "half",
+                        "oneThird",
+                        "twoThirds",
+                        "oneQuarter",
+                        "threeQuarters",
+                        "oneFifth",
+                        "twoFifths",
+                        "threeFifths",
+                        "fourFifths",
+                        "full"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "title": "SizeAxis",
+                  "description": "One axis of a window's size, outer rectangle and chrome included: a fixed extent, a fraction of the reference rectangle, or a quantity label naming that fraction. Exactly one arm — enforced here, and carried as structure alone into the C# mirror."
+                },
+                "height": {
+                  "type": "object",
+                  "properties": {
+                    "pixels": {
+                      "description": "A fixed extent in the native tail's unit, chrome included.",
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "numerator": {
+                      "description": "How many parts of the extent, written with denominator. Absent means 1, so { denominator: 2 } is half — deliberately not a schema default, because a default is always present in the parsed output and would then read as a second arm beside pixels.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "denominator": {
+                      "description": "How many parts the extent is divided into: size = ceil(numerator × extent ÷ denominator). A quantity, not an ordinal — { numerator: 3, denominator: 4 } is three quarters.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "quantity": {
+                      "description": "A fraction named rather than counted — pure sugar, expanded at parse. 'half' is { numerator: 1, denominator: 2 }; 'full' is the whole extent.",
+                      "type": "string",
+                      "enum": [
+                        "half",
+                        "oneThird",
+                        "twoThirds",
+                        "oneQuarter",
+                        "threeQuarters",
+                        "oneFifth",
+                        "twoFifths",
+                        "threeFifths",
+                        "fourFifths",
+                        "full"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false,
+                  "title": "SizeAxis",
+                  "description": "One axis of a window's size, outer rectangle and chrome included: a fixed extent, a fraction of the reference rectangle, or a quantity label naming that fraction. Exactly one arm — enforced here, and carried as structure alone into the C# mirror."
+                },
+                "aspectRatio": {
+                  "type": "object",
+                  "properties": {
+                    "horizontal": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991,
+                      "description": "The ratio's horizontal term — the 16 of 16:9."
+                    },
+                    "vertical": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991,
+                      "description": "The ratio's vertical term — the 9 of 16:9."
+                    },
+                    "mode": {
+                      "default": "fit",
+                      "description": "How the ratio is applied. 'fit' treats the size fields as a bounding box and cannot overflow it — hence the default. 'fromWidth' and 'fromHeight' make one axis authoritative and derive the other, which can overflow and is reported on window.bounds-overflowed rather than clamped.",
+                      "type": "string",
+                      "enum": [
+                        "fit",
+                        "fromWidth",
+                        "fromHeight"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "horizontal",
+                    "vertical",
+                    "mode"
+                  ],
+                  "additionalProperties": false,
+                  "title": "AspectRatio",
+                  "description": "Constrain the window to a ratio. Not a union and so untouched by the dialect change — it has always been one object with three fields."
+                }
+              },
+              "additionalProperties": false,
+              "title": "Size",
+              "description": "How big the window is: one extent per axis plus an optional ratio. An absent axis is the reference rectangle's full extent, so a config with no size at all is fullscreen."
+            },
+            "bounds": {
+              "type": "object",
+              "properties": {
+                "composite": {
+                  "type": "string",
+                  "enum": [
+                    "fullScreen",
+                    "topHalf",
+                    "bottomHalf",
+                    "leftHalf",
+                    "rightHalf",
+                    "topLeftQuarter",
+                    "topRightQuarter",
+                    "bottomLeftQuarter",
+                    "bottomRightQuarter"
+                  ],
+                  "description": "Which whole-bounds shortcut. Each expands to all four geometry fields, which is why a composite beside any of them — or beside aspectRatio — is rejected on window.config-rejected rather than merged."
+                }
+              },
+              "required": [
+                "composite"
+              ],
+              "additionalProperties": false,
+              "title": "CompositeBounds",
+              "description": "A whole-bounds shortcut, replacing position and size together by expanding to all four geometry fields at once. Tolerates no other geometry — written beside either of them or beside aspectRatio it is rejected on window.config-rejected, because it already says what they would say. The rejection, not a precedence rule, is what settles that."
+            },
+            "layout": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "fill"
+                  ],
+                  "description": "Which layout. One member today — 'fill', a single slot filling the window. Closed, and adding a layout later is additive."
+                },
+                "slots": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "slotId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "This slot's id within the layout, as window.set-slot-content addresses it."
+                      },
+                      "staticContent": {
+                        "type": "object",
+                        "properties": {
+                          "preset": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "The preset's room-level name, resolved against the presets travelling in the same state document. An undefined name is rejected on window.config-rejected — which is why the presets ride the document rather than arriving separately."
+                          }
+                        },
+                        "required": [
+                          "preset"
+                        ],
+                        "additionalProperties": false,
+                        "title": "StaticContentReference",
+                        "description": "Name a room-level static content preset — at slot level, where it overrides, or at window level, where it is the fallback for every slot that does not. Resolution is slot, then window, then the system default preset. A reference is whole-cloth: the preset is used as authored, never merged with fields written beside it."
+                      }
+                    },
+                    "required": [
+                      "slotId"
+                    ],
+                    "additionalProperties": false,
+                    "title": "LayoutSlot"
+                  },
+                  "description": "The slots this layout defines. A list even though only the single-slot fill layout is specified, so multi-slot layouts stay additive rather than a wire reshape."
+                }
+              },
+              "required": [
+                "type",
+                "slots"
+              ],
+              "additionalProperties": false,
+              "title": "Layout",
+              "description": "The window's layout: which slots exist and what they paint when nothing is mounted. Configuration stops here — a layout never carries a slot's content. Absent from a config it asserts the fill layout with its one slot, 'main', so a config carrying nothing but an id is still a window something can be shown in."
+            },
+            "staticContent": {
+              "type": "object",
+              "properties": {
+                "preset": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The preset's room-level name, resolved against the presets travelling in the same state document. An undefined name is rejected on window.config-rejected — which is why the presets ride the document rather than arriving separately."
+                }
+              },
+              "required": [
+                "preset"
+              ],
+              "additionalProperties": false,
+              "title": "StaticContentReference",
+              "description": "Name a room-level static content preset — at slot level, where it overrides, or at window level, where it is the fallback for every slot that does not. Resolution is slot, then window, then the system default preset. A reference is whole-cloth: the preset is used as authored, never merged with fields written beside it."
+            }
+          },
+          "required": [
+            "windowId"
+          ],
+          "additionalProperties": false,
+          "title": "Config",
+          "description": "A window's complete configuration, exactly as authored. Never a patch: an omitted field asserts that field's default rather than preserving the current value, which is what makes a Set idempotently re-assertable — and re-assertion is routine here."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "config"
+      ],
+      "additionalProperties": false,
+      "description": "Set a window's complete configuration, creating it if it does not exist. The engine diffs against what is stored and applies only what changed, so re-asserting an unchanged config is a no-op and a window is never recreated for a config change."
+    }
+  }
+}

@@ -1,0 +1,1153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/WindowDesiredStateChanged",
+  "definitions": {
+    "WindowDesiredStateChanged": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "desired-state-changed"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "window"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Owned by the Windows State Manager; MTWindows is a Client publishing events in a domain it does not own."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "When the sender published this message, ISO-8601 UTC."
+        },
+        "windows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "config": {
+                "type": "object",
+                "properties": {
+                  "windowId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[a-z0-9-]+$",
+                    "description": "The window's identity — authored by whoever writes the config, never generated, and the authoritative one: a target segment naming anything else is rejected. AMQP-topic-safe [a-z0-9-], because it is a routing key segment; there is no identity beyond the string."
+                  },
+                  "kind": {
+                    "description": "What the window is for. A screenWindow is audience-facing — frameless, no taskbar entry, nothing minimizes it. A controlWindow is the operator's — OS-decorated and in the taskbar. Absent asserts screenWindow, and a Set that changes this on an existing window is rejected: the kind decides too many defaults to switch under a window that already holds mounted components.",
+                    "type": "string",
+                    "enum": [
+                      "screenWindow",
+                      "controlWindow"
+                    ]
+                  },
+                  "visible": {
+                    "description": "Whether the window is shown. Absent asserts true. Hiding keeps every component mounted — no unmount, no state loss — which is what makes window-swap a first-class alternative to swapping a slot's contents.",
+                    "type": "boolean"
+                  },
+                  "topMost": {
+                    "description": "Whether the window stays above others. Absent asserts false.",
+                    "type": "boolean"
+                  },
+                  "clickThrough": {
+                    "description": "Whether the pointer passes through the window to whatever is behind it. Absent asserts false. True cannot coexist with pointer-dependent chrome — the contradiction is rejected on window.config-rejected rather than resolved by precedence.",
+                    "type": "boolean"
+                  },
+                  "transparent": {
+                    "description": "Whether the window's background can carry alpha. Absent asserts false, and resolved static content with alpha below opaque in a window that is not transparent is rejected — an author asking for translucency the window cannot show.",
+                    "type": "boolean"
+                  },
+                  "decorations": {
+                    "description": "Whether the OS draws a frame. Absent takes the kind default — none for a screenWindow, system for a controlWindow. Geometry is the outer rectangle either way, so toggling this preserves the bounds.",
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "system"
+                    ]
+                  },
+                  "resizable": {
+                    "description": "Whether the operator may resize the window. Absent takes the kind default.",
+                    "type": "boolean"
+                  },
+                  "showInTaskbar": {
+                    "description": "Whether the window appears in the taskbar. Absent takes the kind default.",
+                    "type": "boolean"
+                  },
+                  "windowState": {
+                    "description": "The window's minimized/maximized state. Absent asserts normal. Nothing minimizes a screenWindow; this is here for the operator's window, which the OS also drives.",
+                    "type": "string",
+                    "enum": [
+                      "normal",
+                      "minimized",
+                      "maximized"
+                    ]
+                  },
+                  "position": {
+                    "type": "object",
+                    "properties": {
+                      "display": {
+                        "type": "object",
+                        "properties": {
+                          "mode": {
+                            "type": "string",
+                            "enum": [
+                              "primary",
+                              "all",
+                              "other",
+                              "fromLeft",
+                              "fromTop"
+                            ],
+                            "description": "How to choose a display. 'primary' is the OS's; 'other' is any display that is not primary; 'fromLeft' and 'fromTop' count along the arrangement, taking index; 'all' spans them."
+                          },
+                          "index": {
+                            "default": 1,
+                            "description": "Which display the counting modes land on, 1-based. Ignored by 'primary' and 'all'. An index past the list is unsatisfiable and takes the fallback.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "fallback": {
+                            "description": "Where an unsatisfiable plan lands. Absent takes the kind default — offscreen for a screenWindow, lastOther for a controlWindow — which is why this is not defaulted here: the value depends on a field beside it. 'offscreen' resolves to no display at all, a computed position beyond the rightmost one.",
+                            "type": "string",
+                            "enum": [
+                              "offscreen",
+                              "primary",
+                              "firstOther",
+                              "lastOther",
+                              "firstLeft",
+                              "lastLeft",
+                              "firstTop",
+                              "lastTop"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "mode",
+                          "index"
+                        ],
+                        "additionalProperties": false,
+                        "title": "DisplaySelection",
+                        "description": "The window's display plan, resolved continuously against present hardware. A config stores this and never a display identifier, so an arrangement change re-resolves rather than silently pointing at the wrong panel. Its presence is also what makes a position display-anchored: absent with { pixels } offsets is the OsExplicit arm, and absent with any other offset anchors to the default plan, primary."
+                      },
+                      "displayArea": {
+                        "description": "Which rectangle of the resolved display to measure against. Absent takes the kind default — full for a screenWindow, workingArea for a controlWindow — so it is not defaulted here.",
+                        "type": "string",
+                        "enum": [
+                          "full",
+                          "workingArea"
+                        ]
+                      },
+                      "x": {
+                        "type": "object",
+                        "properties": {
+                          "pixels": {
+                            "description": "A fixed offset from the reference rectangle's origin, in the native tail's unit. With no position.display beside it this is the OsExplicit arm — an absolute virtual-desktop coordinate — which is the spelling a program reporting a measured rectangle writes.",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "index": {
+                            "description": "Which slice, 1-based: origin = floor((index − 1) × extent ÷ denominator). Written with denominator, never alone. { index: 3, denominator: 4 } is the third quarter — an origin at 50%.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "denominator": {
+                            "description": "How many slices the extent is divided into. Written with index, never alone.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "ordinal": {
+                            "description": "A slice named rather than counted — pure sugar, expanded at parse, so a config spelled with labels is value-equal to the same config spelled with numbers and lands on the diff's no-op. 'firstHalf' is { index: 1, denominator: 2 }.",
+                            "type": "string",
+                            "enum": [
+                              "firstHalf",
+                              "secondHalf",
+                              "firstThird",
+                              "secondThird",
+                              "thirdThird",
+                              "firstQuarter",
+                              "secondQuarter",
+                              "thirdQuarter",
+                              "fourthQuarter",
+                              "firstFifth",
+                              "secondFifth",
+                              "thirdFifth",
+                              "fourthFifth",
+                              "fifthFifth"
+                            ]
+                          },
+                          "anchor": {
+                            "description": "Where on the X axis to pin the window — the only arm that reads the size, which is what makes '100px wide, pinned to the end' expressible at no denominator. The words differ per axis so a config reads as prose.",
+                            "type": "string",
+                            "enum": [
+                              "left",
+                              "center",
+                              "right"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "title": "PositionX",
+                        "description": "One axis of a window's position: a fixed offset, a slice of the reference rectangle, an ordinal label naming that slice, or an anchor. Exactly one arm — enforced here, and carried as structure alone into the C# mirror, which has no check to emit."
+                      },
+                      "y": {
+                        "type": "object",
+                        "properties": {
+                          "pixels": {
+                            "description": "A fixed offset from the reference rectangle's origin, in the native tail's unit. With no position.display beside it this is the OsExplicit arm — an absolute virtual-desktop coordinate — which is the spelling a program reporting a measured rectangle writes.",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "index": {
+                            "description": "Which slice, 1-based: origin = floor((index − 1) × extent ÷ denominator). Written with denominator, never alone. { index: 3, denominator: 4 } is the third quarter — an origin at 50%.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "denominator": {
+                            "description": "How many slices the extent is divided into. Written with index, never alone.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "ordinal": {
+                            "description": "A slice named rather than counted — pure sugar, expanded at parse, so a config spelled with labels is value-equal to the same config spelled with numbers and lands on the diff's no-op. 'firstHalf' is { index: 1, denominator: 2 }.",
+                            "type": "string",
+                            "enum": [
+                              "firstHalf",
+                              "secondHalf",
+                              "firstThird",
+                              "secondThird",
+                              "thirdThird",
+                              "firstQuarter",
+                              "secondQuarter",
+                              "thirdQuarter",
+                              "fourthQuarter",
+                              "firstFifth",
+                              "secondFifth",
+                              "thirdFifth",
+                              "fourthFifth",
+                              "fifthFifth"
+                            ]
+                          },
+                          "anchor": {
+                            "description": "Where on the Y axis to pin the window — the only arm that reads the size, which is what makes '100px wide, pinned to the end' expressible at no denominator. The words differ per axis so a config reads as prose.",
+                            "type": "string",
+                            "enum": [
+                              "top",
+                              "center",
+                              "bottom"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "title": "PositionY",
+                        "description": "One axis of a window's position: a fixed offset, a slice of the reference rectangle, an ordinal label naming that slice, or an anchor. Exactly one arm — enforced here, and carried as structure alone into the C# mirror, which has no check to emit."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "title": "Position",
+                    "description": "Where the window sits: the display plan it anchors to, the area of that display it measures against, and one offset per axis. An absent axis starts at the reference rectangle's origin."
+                  },
+                  "size": {
+                    "type": "object",
+                    "properties": {
+                      "width": {
+                        "type": "object",
+                        "properties": {
+                          "pixels": {
+                            "description": "A fixed extent in the native tail's unit, chrome included.",
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "numerator": {
+                            "description": "How many parts of the extent, written with denominator. Absent means 1, so { denominator: 2 } is half — deliberately not a schema default, because a default is always present in the parsed output and would then read as a second arm beside pixels.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "denominator": {
+                            "description": "How many parts the extent is divided into: size = ceil(numerator × extent ÷ denominator). A quantity, not an ordinal — { numerator: 3, denominator: 4 } is three quarters.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "quantity": {
+                            "description": "A fraction named rather than counted — pure sugar, expanded at parse. 'half' is { numerator: 1, denominator: 2 }; 'full' is the whole extent.",
+                            "type": "string",
+                            "enum": [
+                              "half",
+                              "oneThird",
+                              "twoThirds",
+                              "oneQuarter",
+                              "threeQuarters",
+                              "oneFifth",
+                              "twoFifths",
+                              "threeFifths",
+                              "fourFifths",
+                              "full"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "title": "SizeAxis",
+                        "description": "One axis of a window's size, outer rectangle and chrome included: a fixed extent, a fraction of the reference rectangle, or a quantity label naming that fraction. Exactly one arm — enforced here, and carried as structure alone into the C# mirror."
+                      },
+                      "height": {
+                        "type": "object",
+                        "properties": {
+                          "pixels": {
+                            "description": "A fixed extent in the native tail's unit, chrome included.",
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "numerator": {
+                            "description": "How many parts of the extent, written with denominator. Absent means 1, so { denominator: 2 } is half — deliberately not a schema default, because a default is always present in the parsed output and would then read as a second arm beside pixels.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "denominator": {
+                            "description": "How many parts the extent is divided into: size = ceil(numerator × extent ÷ denominator). A quantity, not an ordinal — { numerator: 3, denominator: 4 } is three quarters.",
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "quantity": {
+                            "description": "A fraction named rather than counted — pure sugar, expanded at parse. 'half' is { numerator: 1, denominator: 2 }; 'full' is the whole extent.",
+                            "type": "string",
+                            "enum": [
+                              "half",
+                              "oneThird",
+                              "twoThirds",
+                              "oneQuarter",
+                              "threeQuarters",
+                              "oneFifth",
+                              "twoFifths",
+                              "threeFifths",
+                              "fourFifths",
+                              "full"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false,
+                        "title": "SizeAxis",
+                        "description": "One axis of a window's size, outer rectangle and chrome included: a fixed extent, a fraction of the reference rectangle, or a quantity label naming that fraction. Exactly one arm — enforced here, and carried as structure alone into the C# mirror."
+                      },
+                      "aspectRatio": {
+                        "type": "object",
+                        "properties": {
+                          "horizontal": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "The ratio's horizontal term — the 16 of 16:9."
+                          },
+                          "vertical": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "The ratio's vertical term — the 9 of 16:9."
+                          },
+                          "mode": {
+                            "default": "fit",
+                            "description": "How the ratio is applied. 'fit' treats the size fields as a bounding box and cannot overflow it — hence the default. 'fromWidth' and 'fromHeight' make one axis authoritative and derive the other, which can overflow and is reported on window.bounds-overflowed rather than clamped.",
+                            "type": "string",
+                            "enum": [
+                              "fit",
+                              "fromWidth",
+                              "fromHeight"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "horizontal",
+                          "vertical",
+                          "mode"
+                        ],
+                        "additionalProperties": false,
+                        "title": "AspectRatio",
+                        "description": "Constrain the window to a ratio. Not a union and so untouched by the dialect change — it has always been one object with three fields."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "title": "Size",
+                    "description": "How big the window is: one extent per axis plus an optional ratio. An absent axis is the reference rectangle's full extent, so a config with no size at all is fullscreen."
+                  },
+                  "bounds": {
+                    "type": "object",
+                    "properties": {
+                      "composite": {
+                        "type": "string",
+                        "enum": [
+                          "fullScreen",
+                          "topHalf",
+                          "bottomHalf",
+                          "leftHalf",
+                          "rightHalf",
+                          "topLeftQuarter",
+                          "topRightQuarter",
+                          "bottomLeftQuarter",
+                          "bottomRightQuarter"
+                        ],
+                        "description": "Which whole-bounds shortcut. Each expands to all four geometry fields, which is why a composite beside any of them — or beside aspectRatio — is rejected on window.config-rejected rather than merged."
+                      }
+                    },
+                    "required": [
+                      "composite"
+                    ],
+                    "additionalProperties": false,
+                    "title": "CompositeBounds",
+                    "description": "A whole-bounds shortcut, replacing position and size together by expanding to all four geometry fields at once. Tolerates no other geometry — written beside either of them or beside aspectRatio it is rejected on window.config-rejected, because it already says what they would say. The rejection, not a precedence rule, is what settles that."
+                  },
+                  "layout": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "fill"
+                        ],
+                        "description": "Which layout. One member today — 'fill', a single slot filling the window. Closed, and adding a layout later is additive."
+                      },
+                      "slots": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "slotId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "This slot's id within the layout, as window.set-slot-content addresses it."
+                            },
+                            "staticContent": {
+                              "type": "object",
+                              "properties": {
+                                "preset": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "description": "The preset's room-level name, resolved against the presets travelling in the same state document. An undefined name is rejected on window.config-rejected — which is why the presets ride the document rather than arriving separately."
+                                }
+                              },
+                              "required": [
+                                "preset"
+                              ],
+                              "additionalProperties": false,
+                              "title": "StaticContentReference",
+                              "description": "Name a room-level static content preset — at slot level, where it overrides, or at window level, where it is the fallback for every slot that does not. Resolution is slot, then window, then the system default preset. A reference is whole-cloth: the preset is used as authored, never merged with fields written beside it."
+                            }
+                          },
+                          "required": [
+                            "slotId"
+                          ],
+                          "additionalProperties": false,
+                          "title": "LayoutSlot"
+                        },
+                        "description": "The slots this layout defines. A list even though only the single-slot fill layout is specified, so multi-slot layouts stay additive rather than a wire reshape."
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "slots"
+                    ],
+                    "additionalProperties": false,
+                    "title": "Layout",
+                    "description": "The window's layout: which slots exist and what they paint when nothing is mounted. Configuration stops here — a layout never carries a slot's content. Absent from a config it asserts the fill layout with its one slot, 'main', so a config carrying nothing but an id is still a window something can be shown in."
+                  },
+                  "staticContent": {
+                    "type": "object",
+                    "properties": {
+                      "preset": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The preset's room-level name, resolved against the presets travelling in the same state document. An undefined name is rejected on window.config-rejected — which is why the presets ride the document rather than arriving separately."
+                      }
+                    },
+                    "required": [
+                      "preset"
+                    ],
+                    "additionalProperties": false,
+                    "title": "StaticContentReference",
+                    "description": "Name a room-level static content preset — at slot level, where it overrides, or at window level, where it is the fallback for every slot that does not. Resolution is slot, then window, then the system default preset. A reference is whole-cloth: the preset is used as authored, never merged with fields written beside it."
+                  }
+                },
+                "required": [
+                  "windowId"
+                ],
+                "additionalProperties": false,
+                "title": "Config",
+                "description": "A window's complete configuration, exactly as authored. Never a patch: an omitted field asserts that field's default rather than preserving the current value, which is what makes a Set idempotently re-assertable — and re-assertion is routine here."
+              },
+              "slots": {
+                "description": "Desired content per slot id. A slot the document does not mention is left alone — the document asserts the contents it names, and the layout decides which slots exist. Absent asserts no contents at all.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "contentType": {
+                      "type": "string",
+                      "enum": [
+                        "static",
+                        "timer"
+                      ],
+                      "description": "Which content this slot should hold. 'static' is the one reserved value — no payload, routed to the paint path (the slot renders its resolved static content). Every non-reserved value is exactly an IComponentRegistry key on the host side, one name end to end, and carries its config in the field of the same name. Closed: an undeclared value fails schema validation at the edge and never reaches the registry."
+                    },
+                    "timer": {
+                      "type": "object",
+                      "properties": {
+                        "target": {
+                          "default": "presentation-phase",
+                          "description": "Which timer instance to display — the <target> routing segment of the timer messages this component subscribes to. Defaults to 'presentation-phase', the well-known key of the standing timer; configurable so future custom timer keys need no rework.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "none": {
+                          "default": {
+                            "color": "#101418ff",
+                            "background": "#43a047ff",
+                            "borderColor": "#101418ff"
+                          },
+                          "type": "object",
+                          "properties": {
+                            "color": {
+                              "default": "#101418ff",
+                              "description": "The digits in the none treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "background": {
+                              "default": "#43a047ff",
+                              "description": "The fill behind the digits in the none treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "borderColor": {
+                              "default": "#101418ff",
+                              "description": "The rim around the fill in the none treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "color",
+                            "background",
+                            "borderColor"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The none treatment: what shows before any cue family has fired — a green panel carrying near-black digits. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
+                        },
+                        "warn": {
+                          "default": {
+                            "color": "#101418ff",
+                            "background": "#ffb300ff",
+                            "borderColor": "#101418ff"
+                          },
+                          "type": "object",
+                          "properties": {
+                            "color": {
+                              "default": "#101418ff",
+                              "description": "The digits in the warn treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "background": {
+                              "default": "#ffb300ff",
+                              "description": "The fill behind the digits in the warn treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "borderColor": {
+                              "default": "#101418ff",
+                              "description": "The rim around the fill in the warn treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "color",
+                            "background",
+                            "borderColor"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The warn treatment: what shows once a 'warn'-family cue fires — an amber panel carrying near-black digits. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
+                        },
+                        "timesUp": {
+                          "default": {
+                            "color": "#f5f5f5ff",
+                            "background": "#b23b3bff",
+                            "borderColor": "#f5f5f5ff"
+                          },
+                          "type": "object",
+                          "properties": {
+                            "color": {
+                              "default": "#f5f5f5ff",
+                              "description": "The digits in the timesUp treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "background": {
+                              "default": "#b23b3bff",
+                              "description": "The fill behind the digits in the timesUp treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "borderColor": {
+                              "default": "#f5f5f5ff",
+                              "description": "The rim around the fill in the timesUp treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "color",
+                            "background",
+                            "borderColor"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The timesUp treatment: what shows once a 'timesUp'-family cue fires — a muted-red panel carrying near-white digits. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
+                        },
+                        "over": {
+                          "default": {
+                            "color": "#f5f5f5ff",
+                            "background": "#b23b3bff",
+                            "borderColor": "#f5f5f5ff"
+                          },
+                          "type": "object",
+                          "properties": {
+                            "color": {
+                              "default": "#f5f5f5ff",
+                              "description": "The digits in the over treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "background": {
+                              "default": "#b23b3bff",
+                              "description": "The fill behind the digits in the over treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "borderColor": {
+                              "default": "#f5f5f5ff",
+                              "description": "The rim around the fill in the over treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "color",
+                            "background",
+                            "borderColor"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The over treatment: what shows in overtime — the same muted red as timesUp, because the pulse rather than a new hue is what marks overtime. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
+                        },
+                        "cleared": {
+                          "default": {
+                            "color": "#9e9e9eff",
+                            "background": "#101418ff",
+                            "borderColor": "#9e9e9eff"
+                          },
+                          "type": "object",
+                          "properties": {
+                            "color": {
+                              "default": "#9e9e9eff",
+                              "description": "The digits in the cleared treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "background": {
+                              "default": "#101418ff",
+                              "description": "The fill behind the digits in the cleared treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "borderColor": {
+                              "default": "#9e9e9eff",
+                              "description": "The rim around the fill in the cleared treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "color",
+                            "background",
+                            "borderColor"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The cleared treatment: the wall clock's own treatment, which is also the fallback of last resort before any usable timer state has arrived — a lifecycle state rather than an escalation stage, and the one face that stays ambient: a dark fill with grey digits. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
+                        },
+                        "geometry": {
+                          "default": {
+                            "padding": {
+                              "top": 6,
+                              "right": 6,
+                              "bottom": 6,
+                              "left": 6
+                            },
+                            "borderThickness": {
+                              "top": 0,
+                              "right": 0,
+                              "bottom": 0,
+                              "left": 0
+                            },
+                            "cornerRadius": 0
+                          },
+                          "type": "object",
+                          "properties": {
+                            "padding": {
+                              "default": {
+                                "top": 6,
+                                "right": 6,
+                                "bottom": 6,
+                                "left": 6
+                              },
+                              "type": "object",
+                              "properties": {
+                                "top": {
+                                  "default": 6,
+                                  "description": "The inset between the face's edge and the digits at the top, in percent of slot HEIGHT.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "right": {
+                                  "default": 6,
+                                  "description": "The inset between the face's edge and the digits at the right, in percent of slot WIDTH.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "bottom": {
+                                  "default": 6,
+                                  "description": "The inset between the face's edge and the digits at the bottom, in percent of slot HEIGHT.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "left": {
+                                  "default": 6,
+                                  "description": "The inset between the face's edge and the digits at the left, in percent of slot WIDTH.",
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "top",
+                                "right",
+                                "bottom",
+                                "left"
+                              ],
+                              "additionalProperties": false,
+                              "description": "The gutter inside the face: the fill covers the whole slot, this insets what is drawn on it, and the Viewbox scales the digits uniformly into what is left. Four-sided, in percent of the slot, each side against its own axis — top and bottom against height, left and right against width. This is the one meaning of the inset both heads implement; neither keeps a margin of its own."
+                            },
+                            "borderThickness": {
+                              "default": {
+                                "top": 0,
+                                "right": 0,
+                                "bottom": 0,
+                                "left": 0
+                              },
+                              "type": "object",
+                              "properties": {
+                                "top": {
+                                  "default": 0,
+                                  "description": "The rim's thickness at the top, in percent of slot HEIGHT.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "right": {
+                                  "default": 0,
+                                  "description": "The rim's thickness at the right, in percent of slot WIDTH.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "bottom": {
+                                  "default": 0,
+                                  "description": "The rim's thickness at the bottom, in percent of slot HEIGHT.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "left": {
+                                  "default": 0,
+                                  "description": "The rim's thickness at the left, in percent of slot WIDTH.",
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "top",
+                                "right",
+                                "bottom",
+                                "left"
+                              ],
+                              "additionalProperties": false,
+                              "description": "The rim's thickness, drawn inside the fill's edge in the stage's borderColor. Four-sided, in percent of the slot, each side against its own axis — top and bottom against height, left and right against width. Zero on every side by default, so the default face is a plain filled panel and borderColor shows nothing until this is raised."
+                            },
+                            "cornerRadius": {
+                              "default": 0,
+                              "description": "How far the face's corners are rounded, in percent of the slot's SHORTER side — a radius is one length applied in both axes, so the shorter side is what bounds it. 50 is a pill; above 50 clamps to 50, in the shared ViewModel, so neither head invents a maximum of its own. Square by default, because slots tile.",
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "padding",
+                            "borderThickness",
+                            "cornerRadius"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The running countdown's face, shared by all four escalation stages. All geometry is percent of the slot, so one number holds on a confidence monitor and on a video wall and authoring it needs no knowledge of the Viewbox. Geometry follows the FACE rather than the stage, which is what stops a cue crossing from moving the digits: colour changes, geometry does not."
+                        },
+                        "clearedGeometry": {
+                          "default": {
+                            "padding": {
+                              "top": 6,
+                              "right": 6,
+                              "bottom": 6,
+                              "left": 6
+                            },
+                            "borderThickness": {
+                              "top": 0,
+                              "right": 0,
+                              "bottom": 0,
+                              "left": 0
+                            },
+                            "cornerRadius": 0
+                          },
+                          "type": "object",
+                          "properties": {
+                            "padding": {
+                              "default": {
+                                "top": 6,
+                                "right": 6,
+                                "bottom": 6,
+                                "left": 6
+                              },
+                              "type": "object",
+                              "properties": {
+                                "top": {
+                                  "default": 6,
+                                  "description": "The inset between the face's edge and the digits at the top, in percent of slot HEIGHT.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "right": {
+                                  "default": 6,
+                                  "description": "The inset between the face's edge and the digits at the right, in percent of slot WIDTH.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "bottom": {
+                                  "default": 6,
+                                  "description": "The inset between the face's edge and the digits at the bottom, in percent of slot HEIGHT.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "left": {
+                                  "default": 6,
+                                  "description": "The inset between the face's edge and the digits at the left, in percent of slot WIDTH.",
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "top",
+                                "right",
+                                "bottom",
+                                "left"
+                              ],
+                              "additionalProperties": false,
+                              "description": "The gutter inside the face: the fill covers the whole slot, this insets what is drawn on it, and the Viewbox scales the digits uniformly into what is left. Four-sided, in percent of the slot, each side against its own axis — top and bottom against height, left and right against width. This is the one meaning of the inset both heads implement; neither keeps a margin of its own."
+                            },
+                            "borderThickness": {
+                              "default": {
+                                "top": 0,
+                                "right": 0,
+                                "bottom": 0,
+                                "left": 0
+                              },
+                              "type": "object",
+                              "properties": {
+                                "top": {
+                                  "default": 0,
+                                  "description": "The rim's thickness at the top, in percent of slot HEIGHT.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "right": {
+                                  "default": 0,
+                                  "description": "The rim's thickness at the right, in percent of slot WIDTH.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "bottom": {
+                                  "default": 0,
+                                  "description": "The rim's thickness at the bottom, in percent of slot HEIGHT.",
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "left": {
+                                  "default": 0,
+                                  "description": "The rim's thickness at the left, in percent of slot WIDTH.",
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "top",
+                                "right",
+                                "bottom",
+                                "left"
+                              ],
+                              "additionalProperties": false,
+                              "description": "The rim's thickness, drawn inside the fill's edge in the stage's borderColor. Four-sided, in percent of the slot, each side against its own axis — top and bottom against height, left and right against width. Zero on every side by default, so the default face is a plain filled panel and borderColor shows nothing until this is raised."
+                            },
+                            "cornerRadius": {
+                              "default": 0,
+                              "description": "How far the face's corners are rounded, in percent of the slot's SHORTER side — a radius is one length applied in both axes, so the shorter side is what bounds it. 50 is a pill; above 50 clamps to 50, in the shared ViewModel, so neither head invents a maximum of its own. Square by default, because slots tile.",
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "padding",
+                            "borderThickness",
+                            "cornerRadius"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The cleared wall clock's face — the second of the two, and the only other one. All geometry is percent of the slot, so one number holds on a confidence monitor and on a video wall and authoring it needs no knowledge of the Viewbox. Geometry follows the FACE rather than the stage, which is what stops a cue crossing from moving the digits: colour changes, geometry does not."
+                        },
+                        "pulseOnOver": {
+                          "default": true,
+                          "description": "Whether the overtime display pulses — a subtle pulse, never a flash, and it breathes the text alone so a translucent face never pulses what sits behind it. On by default.",
+                          "type": "boolean"
+                        },
+                        "transitionMs": {
+                          "default": 300,
+                          "description": "How long a view takes to cross-fade between stage treatments, in whole MILLISECONDS — the unit is in the name because every other duration in this contract counts in seconds. All three colours fade together, because a cue crossing is one visual event. 0 switches instantly.",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "target",
+                        "none",
+                        "warn",
+                        "timesUp",
+                        "over",
+                        "cleared",
+                        "geometry",
+                        "clearedGeometry",
+                        "pulseOnOver",
+                        "transitionMs"
+                      ],
+                      "additionalProperties": false,
+                      "description": "The timer component's config: which timer it watches, the per-stage palette of digits, fill and rim it paints with, the per-face geometry it paints into, and its transition effects. Present iff contentType is 'timer'."
+                    }
+                  },
+                  "required": [
+                    "contentType"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A slot's desired content, discriminated on contentType. Closed: 'static' (reserved, no payload — render the slot's resolved static content) and 'timer' (the timer component, carrying its config in the 'timer' field). A component member's config field is present iff its contentType is selected. Never null — a slot with no component mounted is set to static, not to nothing.",
+                  "title": "SlotContent"
+                }
+              }
+            },
+            "required": [
+              "config"
+            ],
+            "additionalProperties": false,
+            "description": "One window's desired state: the complete configuration, and the desired content of the slots its layout defines."
+          },
+          "description": "Every window the room should be showing, with the desired contents of their slots. The complete collection and authoritative over it — which is how a stale window nobody remembers gets reaped when a document applies. Empty means the rung has not arrived, never 'close everything': a Manager that lost its storage must not be able to black out a live room."
+        },
+        "presets": {
+          "type": "object",
+          "properties": {
+            "named": {
+              "description": "The presets a config may name, by their room-level names. A window or slot naming a key absent from here is rejected on window.config-rejected — a check only possible because the presets and the configs that reference them travel in one document.",
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "solid",
+                      "image"
+                    ],
+                    "description": "Which preset this is. 'solid' is the background alone; 'image' paints an asset over it, and the background is what shows through and what remains if the asset cannot be resolved."
+                  },
+                  "background": {
+                    "default": "#000000ff",
+                    "description": "The fill, '#rrggbb' or '#rrggbbaa'. Alpha below opaque needs a transparent window; in one that is not, the pairing is rejected on window.config-rejected. Written as a string rather than a packed integer because nothing decides byte order for an integer, and the two readings differ by a channel.",
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+                  },
+                  "image": {
+                    "description": "The asset to paint, relative to the configured assets root. Present iff type is 'image'. A reference that cannot become an image — missing, outside the root, undecodable, animated — degrades to the background and reports on window.asset-unresolved; it is not a rejection, because a config valid on seven machines and broken on the eighth is a runtime fact.",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fit": {
+                    "description": "How the image fills its rectangle. 'contain' fits it whole, 'cover' fills and crops, 'stretch' distorts. Absent asserts 'contain'. Present only on the image arm.",
+                    "type": "string",
+                    "enum": [
+                      "contain",
+                      "cover",
+                      "stretch"
+                    ]
+                  },
+                  "align": {
+                    "description": "Where the image sits when it does not fill the rectangle — which is every case but 'stretch'. Absent asserts centred on both axes. Present only on the image arm.",
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "string",
+                        "enum": [
+                          "center",
+                          "left",
+                          "right"
+                        ],
+                        "description": "Horizontal alignment within the rectangle."
+                      },
+                      "y": {
+                        "type": "string",
+                        "enum": [
+                          "center",
+                          "top",
+                          "bottom"
+                        ],
+                        "description": "Vertical alignment within the rectangle."
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y"
+                    ],
+                    "additionalProperties": false,
+                    "title": "ImageAlign"
+                  }
+                },
+                "required": [
+                  "type",
+                  "background"
+                ],
+                "additionalProperties": false,
+                "title": "StaticContentPreset",
+                "description": "A static content preset — what paints when no component is mounted. Discriminated on type: 'solid' is the background alone, 'image' paints an asset over it and carries the image fields beside the discriminant, present iff selected."
+              }
+            },
+            "systemDefault": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "solid",
+                    "image"
+                  ],
+                  "description": "Which preset this is. 'solid' is the background alone; 'image' paints an asset over it, and the background is what shows through and what remains if the asset cannot be resolved."
+                },
+                "background": {
+                  "default": "#000000ff",
+                  "description": "The fill, '#rrggbb' or '#rrggbbaa'. Alpha below opaque needs a transparent window; in one that is not, the pairing is rejected on window.config-rejected. Written as a string rather than a packed integer because nothing decides byte order for an integer, and the two readings differ by a channel.",
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+                },
+                "image": {
+                  "description": "The asset to paint, relative to the configured assets root. Present iff type is 'image'. A reference that cannot become an image — missing, outside the root, undecodable, animated — degrades to the background and reports on window.asset-unresolved; it is not a rejection, because a config valid on seven machines and broken on the eighth is a runtime fact.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "fit": {
+                  "description": "How the image fills its rectangle. 'contain' fits it whole, 'cover' fills and crops, 'stretch' distorts. Absent asserts 'contain'. Present only on the image arm.",
+                  "type": "string",
+                  "enum": [
+                    "contain",
+                    "cover",
+                    "stretch"
+                  ]
+                },
+                "align": {
+                  "description": "Where the image sits when it does not fill the rectangle — which is every case but 'stretch'. Absent asserts centred on both axes. Present only on the image arm.",
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "string",
+                      "enum": [
+                        "center",
+                        "left",
+                        "right"
+                      ],
+                      "description": "Horizontal alignment within the rectangle."
+                    },
+                    "y": {
+                      "type": "string",
+                      "enum": [
+                        "center",
+                        "top",
+                        "bottom"
+                      ],
+                      "description": "Vertical alignment within the rectangle."
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false,
+                  "title": "ImageAlign"
+                }
+              },
+              "required": [
+                "type",
+                "background"
+              ],
+              "additionalProperties": false,
+              "title": "StaticContentPreset",
+              "description": "A static content preset — what paints when no component is mounted. Discriminated on type: 'solid' is the background alone, 'image' paints an asset over it and carries the image fields beside the discriminant, present iff selected."
+            }
+          },
+          "additionalProperties": false,
+          "title": "StaticContentPresets",
+          "description": "The room's static content presets: the named ones a config may reference, and the systemDefault that paints where nothing else resolves — the last step of slot, then window, then this. An absent systemDefault asserts an opaque black solid, so there is always something to paint, and an absent presets object asserts both defaults, so a document need not restate them to say nothing about them."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "windows"
+      ],
+      "additionalProperties": false,
+      "description": "The room's desired window state, published whole whenever the Windows State Manager's store changes — and returned unchanged as the window.request-windows-state reply, one type for both. Windows, their slot contents and the room's presets travel together, which is what lands a boot at once and lets a stale window be reaped."
+    }
+  }
+}

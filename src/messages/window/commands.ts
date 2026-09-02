@@ -4,6 +4,13 @@ import {
   windowManagerCommandEnvelope,
   windowManagerTargetedCommandEnvelope,
 } from "./common.ts";
+import {
+  windowBounds,
+  windowConfig,
+  windowConfigPatch,
+  windowPosition,
+  windowSize,
+} from "./config.ts";
 import { WindowSlotContent } from "./content.ts";
 
 /**
@@ -120,3 +127,124 @@ export const WindowClear = z
   );
 
 export type WindowClear = z.infer<typeof WindowClear>;
+
+/**
+ * `window.set-window.<windowId>` — the complete window configuration.
+ *
+ * **Never a patch.** A patch has no fixed point and cannot be idempotently re-asserted, and
+ * re-assertion is routine here: recovery replay, late-joiner pulls. Creation and
+ * reconfiguration are the same message — the engine diffs against the current config and
+ * applies only what changed, so a window is never recreated for a config change and never
+ * loses the components it holds.
+ *
+ * **Bound by the Windows State Manager, not by a window** — even though the key names a
+ * WindowId. Everything mutating desired state reaches the store first, so a window's state is
+ * always exactly the store's; a client Setting a window directly would be a second path the
+ * store knew nothing about, which is the live-versus-desired split this design exists to avoid.
+ *
+ * A malformed payload is not a rejection: JSON that fails to deserialize is logged and dropped
+ * at the port. `window.config-rejected` covers the rules on configs that parse.
+ */
+export const WindowSetWindow = z
+  .strictObject({
+    ...windowManagerTargetedCommandEnvelope(
+      "set-window",
+      "The WindowId this command is about — the <target> routing segment. config.windowId is " +
+        "the authoritative identity: a target naming anything else is rejected, untargeted, " +
+        "because neither window can honestly own the report. Bound by the Windows State " +
+        "Manager, never by a window.",
+    ),
+    config: windowConfig,
+  })
+  .describe(
+    "Set a window's complete configuration, creating it if it does not exist. The engine " +
+      "diffs against what is stored and applies only what changed, so re-asserting an " +
+      "unchanged config is a no-op and a window is never recreated for a config change.",
+  );
+
+export type WindowSetWindow = z.infer<typeof WindowSetWindow>;
+
+/**
+ * `window.patch-window.<windowId>` — a sparse change to stored desired state.
+ *
+ * **For producers that do not hold the config.** The Manager merges the patch into stored
+ * desired state and publishes the whole state document; a window only ever acts on that
+ * document. One path to a window, changes durable by construction, no live-versus-desired
+ * split.
+ *
+ * `window.hide` and `window.show` are pure sugar for this, each expanding to exactly one patch.
+ */
+export const WindowPatchWindow = z
+  .strictObject({
+    ...windowManagerTargetedCommandEnvelope("patch-window"),
+    patch: windowConfigPatch,
+  })
+  .describe(
+    "Change part of a window's stored desired state without holding its whole config. The " +
+      "Manager merges this into the store and publishes the whole state document — a window " +
+      "acts on that document and never on this message.",
+  );
+
+export type WindowPatchWindow = z.infer<typeof WindowPatchWindow>;
+
+/**
+ * `window.set-bounds.<windowId>` — the geometry fields alone, in the config object's spellings.
+ *
+ * Named sugar for a patch carrying nothing but geometry, so an operator surface that only ever
+ * moves windows needs neither the whole config nor a general patch.
+ *
+ * **The Manager stores exactly the intent it is given and never infers one**: a body carrying
+ * `position.display` plus offsets is stored display-anchored and re-resolves continuously; a
+ * body carrying bare `{ pixels }` offsets and no display is stored OS-explicit *verbatim* —
+ * resolving which display contains a rectangle would fabricate a plan the sender never stated,
+ * correct today and invisibly wrong when the arrangement changes.
+ */
+export const WindowSetBounds = z
+  .strictObject({
+    ...windowManagerTargetedCommandEnvelope(
+      "set-bounds",
+      "The WindowId whose geometry this command sets — the <target> routing segment. " +
+        "Required, like every patch: geometry with nobody to apply it to is meaningless. " +
+        "Bound by the Windows State Manager, not by any window.",
+    ),
+    position: windowPosition.optional(),
+    size: windowSize.optional(),
+    bounds: windowBounds.optional(),
+  })
+  .describe(
+    "Set a window's geometry — the position, size and composite fields of its configuration, " +
+      "in the same spellings a complete config uses. A patch in all but name, so what is " +
+      "absent is left as stored.",
+  );
+
+export type WindowSetBounds = z.infer<typeof WindowSetBounds>;
+
+/**
+ * `window.close.<windowId>` — destroy a window.
+ *
+ * **Explicit, because per-window deltas cannot say it by absence.** Runs the unmount contract
+ * per slot, then destroys; always completes, since a wedged dispose is abandoned at the
+ * timeout. A clean close publishes nothing, and closing the last window never exits the
+ * process — a room with no windows is a room waiting for one.
+ *
+ * **The broadcast form is removed.** It previously existed as the untargeted key, which would
+ * have closed every window in the room from one message; closing them all stays fully
+ * expressible as N explicit commands, which is an operator's deliberate act rather than a
+ * single slip.
+ */
+export const WindowClose = z
+  .strictObject(
+    windowManagerTargetedCommandEnvelope(
+      "close",
+      "The WindowId to close — the <target> routing segment. Required: there is no broadcast " +
+        "form, so closing a room's windows is N deliberate commands rather than one. Bound by " +
+        "the Windows State Manager, not by any window.",
+    ),
+  )
+  .describe(
+    "Close one window: run the unmount contract for each of its slots, then destroy it. " +
+      "Always completes — a wedged dispose is abandoned at the timeout — and a clean close " +
+      "publishes nothing. Never exits the process, whichever window it was.",
+  );
+
+export type WindowClose = z.infer<typeof WindowClose>;

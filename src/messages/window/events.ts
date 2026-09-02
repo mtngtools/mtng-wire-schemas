@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { windowEventEnvelope, windowOptionallyTargetedEventEnvelope } from "./common.ts";
+import {
+  windowEventEnvelope,
+  windowOptionallyTargetedEventEnvelope,
+  windowRoomEventEnvelope,
+} from "./common.ts";
+import { staticContentPresets, windowDesiredState } from "./config.ts";
 
 /**
  * Window events — exchange `mtng.events`, routing key `window.<name>.<windowId>`.
@@ -254,3 +259,46 @@ export const WindowBoundsOverflowed = z
   );
 
 export type WindowBoundsOverflowed = z.infer<typeof WindowBoundsOverflowed>;
+
+/**
+ * `window.desired-state-changed` — the room's desired state, whole, whenever it changes.
+ *
+ * **The one document a window acts on.** Everything that mutates desired state — a Set, a
+ * patch, the sugar verbs, a named state applied — reaches the Manager's store first, and the
+ * store publishes this. A window's state is therefore always exactly the store's, which is
+ * what removes the live-versus-desired split rather than managing it.
+ *
+ * **This type is also the `window.request-windows-state` reply**, unchanged, exactly as
+ * `TimerStateChanged` answers `TimerCurrentState`. That identity is what makes boot and live
+ * operation one path: a client subscribes, snapshots, and applies both with the same code.
+ *
+ * **Named *desired* state deliberately.** `window.state-changed` stays struck and this name is
+ * kept clear of it: window state means a window's live minimized/maximized property, and this
+ * is what the room was asked to show. The two are different things, and the names carry the
+ * difference rather than competing for one word.
+ *
+ * **No target** — the store is room-wide, and naming a window on a document that carries the
+ * whole collection would invite a reader to think it carried only that window's slice.
+ */
+export const WindowDesiredStateChanged = z
+  .strictObject({
+    ...windowRoomEventEnvelope("desired-state-changed"),
+    windows: z
+      .array(windowDesiredState)
+      .describe(
+        "Every window the room should be showing, with the desired contents of their slots. " +
+          "The complete collection and authoritative over it — which is how a stale window " +
+          "nobody remembers gets reaped when a document applies. Empty means the rung has " +
+          "not arrived, never 'close everything': a Manager that lost its storage must not " +
+          "be able to black out a live room.",
+      ),
+    presets: staticContentPresets.optional(),
+  })
+  .describe(
+    "The room's desired window state, published whole whenever the Windows State Manager's " +
+      "store changes — and returned unchanged as the window.request-windows-state reply, one " +
+      "type for both. Windows, their slot contents and the room's presets travel together, " +
+      "which is what lands a boot at once and lets a stale window be reaped.",
+  );
+
+export type WindowDesiredStateChanged = z.infer<typeof WindowDesiredStateChanged>;

@@ -16,9 +16,15 @@ repos on its own version cadence. See **ADR-0005** in `mtng-dotnet-mono` for the
 - **Consumers pin this repo as a git submodule.** Both `mtng-mono` (TS) and `mtng-dotnet-mono`
   (.NET) vendor a fixed commit; upgrading the contract is a deliberate pointer bump, reviewed
   like any other change.
-- **Dual-language is opt-in via an explicit allow-list.** A message crosses the language boundary
-  *only* if it is exported from [`src/index.ts`](src/index.ts). Default is single-language; the
-  dual surface stays small and intentional.
+- **Every message is authored here; only *export* is opt-in.** A message is authored in Zod
+  under [`src/messages/`](src/messages/) and mirrored into C# whether or not anything exports
+  it — `npm run generate` walks the message modules, not the barrel. What
+  [`src/index.ts`](src/index.ts) decides is which types reach **TypeScript consumers**: default
+  single-language, and the dual surface stays small and intentional.
+  - **These were one rule and are now two** (mtng-dotnet-mono ADR-0026, which amends ADR-0005's
+    scope clause). Fusing them meant a message the barrel did not name had no schema and so had
+    to be hand-authored in C#, outside the drift gate — which is how four such types
+    accumulated. Authorship is universal; export is curated.
 
 This repo is **self-contained** — it depends on no consumer and is deliberately not chained to
 either mono's build. (Same discipline as the `stable` / `experimental` areas in
@@ -29,22 +35,25 @@ either mono's build. (Same discipline as the `stable` / `experimental` areas in
 ```
 mtng-wire-schemas/
   src/                       # Zod v4 source of truth (authored)
-    index.ts                 #   the allow-list: only messages exported here are dual-language
+    index.ts                 #   the EXPORT allow-list: which messages TS consumers receive
     shared/                  #   VOCABULARIES more than one domain assembles from — see below
       timing.ts              #     phaseCue, timerCue, timerHint, load
       presentation-context.ts#     the SelfContained dialect's block/session/timer/files groups
-    messages/                #   one file per message contract, or one folder per domain
+    messages/                #   THE CODEGEN INPUT: every PascalCase Zod export
+                             #   under here is a message and gets a schema; a
+                             #   piece is camelCase and gets none
       backdrop/              #   the floor app's set: commands, events + shared pieces
       presentation/          #   the Present manager's set: the pointer + its navigation echo,
                              #   the snapshot rpc, and 6 commands (enter/exit, four goto-*)
       timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces
-      window/                #   the window domain's dual slices: the slot-content trio, the
-                             #   configuration surface's simple messages (hide/show,
-                             #   apply-state/clear, config-rejected), asset-unresolved + the
-                             #   placement verdicts (display-unsatisfied, bounds-overflowed)
+      window/                #   the window domain, whole: the slot-content trio, the
+                             #   sugar verbs and named-state pair, the reports, the
+                             #   config-carrying commands (set-window, patch-window,
+                             #   set-bounds), close, and the snapshot rpc + state
+                             #   document; config.ts holds the dialect they share
   schemas/                   # emitted JSON Schema (GENERATED — do not hand-edit)
-    <message>.schema.json    #   one file per allow-listed message
-  scripts/generate.mjs       # the emitter: src/ (Zod) -> schemas/ (JSON Schema)
+    <message>.schema.json    #   one file per authored message
+  scripts/generate.mjs       # the emitter: src/messages/ (Zod) -> schemas/ (JSON Schema)
   package.json               # Zod SoT + `generate` / `typecheck` / `check` scripts
 ```
 
@@ -82,8 +91,10 @@ time, not a shape at a time.
 
 ### Authoring rules
 
-- **Every allow-listed export is a Zod schema with a PascalCase name.** The export name becomes
-  the schema file name (kebab-cased) *and* the C# class name — renaming an export renames both.
+- **A message is a PascalCase Zod export under `src/messages/`; a piece is camelCase.** That is
+  what the emitter walks, so the convention is load-bearing rather than cosmetic — a message
+  named `windowSetWindow` would silently never mirror. The export name becomes the schema file
+  name (kebab-cased) *and* the C# class name, so renaming a message renames both.
 - **Document fields with `.describe()`, not JSDoc.** Only `.describe()` reaches the emitted JSON
   Schema, and from there the generated C# XML doc comments.
 - **A `.describe()` on a wrapper replaces the one on the schema it wraps.**
@@ -97,6 +108,16 @@ time, not a shape at a time.
   `z.discriminatedUnion` (emits `oneOf`, which collapses to its first branch, silently dropping
   the others) and `.nullable()` (emits `anyOf [T, null]`, which becomes a junk empty class). Use
   a tagged record with `.optional()` fields instead, and enforce the invariant with `.check()`.
+- **Name a nested shape with `.meta({ title })` when it is reached more than once** — verified
+  against NJsonSchema, not assumed. The mirror names an inline object after the *property* that
+  holds it, and a shape with no property name at all — the value type of a `z.record(…)` — is
+  named `Anonymous`. Two records in one message therefore both wanted `<Message>Anonymous`, and
+  the second silently took the first's class: the window state document's `slots` came out
+  typed as a static-content preset. A `title` is what NJsonSchema falls back to when there is no
+  property-name hint, so it fixes that, and it emits **inline** rather than hoisting into
+  `$defs` — which matters, because the .NET side requires exactly one top-level definition per
+  file. A title does **not** override a property-name hint, so the same shape under a named
+  property still emits its own class; that is duplication, not a defect.
 - **`.default(…)` crosses the mirror, and it puts the field in `required`** — both verified
   against the generators, not assumed. NJsonSchema turns a schema `default` into a **C# property
   initializer** (`public string Target { get; set; } = "presentation-phase";`), so a defaulted value has
@@ -130,5 +151,13 @@ what executes and there is no compiled copy to fall out of date.
 - Version lives in `package.json` and is mirrored by a **git tag** `vMAJOR.MINOR.PATCH`
   (`v0.1.0` first). **Tags are canonical** — that is what consumers pin.
 - Pre-1.0: minor bumps may break; document breaks in the release notes.
+  - **0.14.0 breaks the window configuration dialect.** Every geometry value became one object
+    with optional fields and a `.check()`, so the bare-label spellings are gone: `"top"` is now
+    `{ "anchor": "top" }`, `"half"` is `{ "quantity": "half" }`, `"firstHalf"` is
+    `{ "ordinal": "firstHalf" }`, and `"bottomHalf"` is `{ "composite": "bottomHalf" }`. Every
+    object arm — `{ index, denominator }`, `{ pixels }`, `aspectRatio` — is unchanged, and
+    `OsExplicit` keeps `{ "pixels": n }`, told apart as before by `position.display` being
+    absent. Nothing is deployed and no seed exists in the field, so the cost is signalling
+    rather than compatibility.
 - Cut a release: bump `package.json`, regenerate `schemas/`, commit, then
   `git tag vX.Y.Z && git push --tags`.
