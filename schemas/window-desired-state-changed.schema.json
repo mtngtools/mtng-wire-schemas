@@ -941,6 +941,21 @@
                           "description": "Whether the overtime display pulses — a subtle pulse, never a flash, and it breathes the text alone so a translucent face never pulses what sits behind it. On by default.",
                           "type": "boolean"
                         },
+                        "overMode": {
+                          "default": "countUpWithOverByText",
+                          "description": "What the clock shows once it goes past zero. 'zero' holds 00:00; 'countUp' counts the overrun up; 'countUpWithOverByText' counts up under the overByText label. CONFIGURATION, NEVER A CUE: cues select a colour and the clock determines the numerals, so a timer past its deadline counts up whether or not an 'over' cue was ever authored. The count-up renders at the countdown's OWN size — one number at one size across zero, so the crossing reads as a continuation rather than a mode change; only the label is subtle. 'zero' is an author choosing a held number deliberately.",
+                          "type": "string",
+                          "enum": [
+                            "zero",
+                            "countUp",
+                            "countUpWithOverByText"
+                          ]
+                        },
+                        "overByText": {
+                          "default": "OVER BY",
+                          "description": "The label above the count-up in 'countUpWithOverByText', in a subtle, blocky, short font. Shown only BELOW zero — 00:00 is the countdown's last frame, so 'OVER BY 00:00', claiming an overrun that has not happened, is never painted. Ignored by the other two modes.",
+                          "type": "string"
+                        },
                         "transitionMs": {
                           "default": 300,
                           "description": "How long a view takes to cross-fade between stage treatments, in whole MILLISECONDS — the unit is in the name because every other duration in this contract counts in seconds. All three colours fade together, because a cue crossing is one visual event. 0 switches instantly.",
@@ -959,10 +974,12 @@
                         "geometry",
                         "clearedGeometry",
                         "pulseOnOver",
+                        "overMode",
+                        "overByText",
                         "transitionMs"
                       ],
                       "additionalProperties": false,
-                      "description": "The timer component's config: which timer it watches, the per-stage palette of digits, fill and rim it paints with, the per-face geometry it paints into, and its transition effects. Present iff contentType is 'timer'."
+                      "description": "The timer component's config: which timer it watches, the per-stage palette of digits, fill and rim it paints with, the per-face geometry it paints into, what it shows past zero, and its transition effects. Present iff contentType is 'timer'."
                     }
                   },
                   "required": [
