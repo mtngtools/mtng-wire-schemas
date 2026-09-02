@@ -99,7 +99,7 @@ time, not a shape at a time.
   a tagged record with `.optional()` fields instead, and enforce the invariant with `.check()`.
 - **`.default(…)` crosses the mirror, and it puts the field in `required`** — both verified
   against the generators, not assumed. NJsonSchema turns a schema `default` into a **C# property
-  initializer** (`public string NoneColor { get; set; } = "#43A047";`), so a defaulted value has
+  initializer** (`public string Target { get; set; } = "presentation-phase";`), so a defaulted value has
   exactly **one home — here** — instead of one copy per language, and a field absent from the JSON
   lands on that same value on the .NET side. The cost is that Zod's draft-7 emitter describes the
   **output** type, where a defaulted field is always present: it emits `default` *and* lists the

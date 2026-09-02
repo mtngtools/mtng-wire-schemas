@@ -22,44 +22,427 @@
               "type": "string",
               "minLength": 1
             },
-            "noneColor": {
-              "default": "#43A047",
-              "description": "Countdown color before any cue family has fired. Default: green.",
-              "type": "string",
-              "minLength": 1
+            "none": {
+              "default": {
+                "color": "#101418ff",
+                "background": "#43a047ff",
+                "borderColor": "#101418ff"
+              },
+              "type": "object",
+              "properties": {
+                "color": {
+                  "default": "#101418ff",
+                  "description": "The digits in the none treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "background": {
+                  "default": "#43a047ff",
+                  "description": "The fill behind the digits in the none treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "borderColor": {
+                  "default": "#101418ff",
+                  "description": "The rim around the fill in the none treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "color",
+                "background",
+                "borderColor"
+              ],
+              "additionalProperties": false,
+              "description": "The none treatment: what shows before any cue family has fired — a green panel carrying near-black digits. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
             },
-            "warnColor": {
-              "default": "#FFB300",
-              "description": "Countdown color once a 'warn'-family cue fires. Default: amber.",
-              "type": "string",
-              "minLength": 1
+            "warn": {
+              "default": {
+                "color": "#101418ff",
+                "background": "#ffb300ff",
+                "borderColor": "#101418ff"
+              },
+              "type": "object",
+              "properties": {
+                "color": {
+                  "default": "#101418ff",
+                  "description": "The digits in the warn treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "background": {
+                  "default": "#ffb300ff",
+                  "description": "The fill behind the digits in the warn treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "borderColor": {
+                  "default": "#101418ff",
+                  "description": "The rim around the fill in the warn treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "color",
+                "background",
+                "borderColor"
+              ],
+              "additionalProperties": false,
+              "description": "The warn treatment: what shows once a 'warn'-family cue fires — an amber panel carrying near-black digits. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
             },
-            "timesUpColor": {
-              "default": "#B23B3B",
-              "description": "Countdown color once a 'timesUp'-family cue fires. Default: muted red.",
-              "type": "string",
-              "minLength": 1
+            "timesUp": {
+              "default": {
+                "color": "#f5f5f5ff",
+                "background": "#b23b3bff",
+                "borderColor": "#f5f5f5ff"
+              },
+              "type": "object",
+              "properties": {
+                "color": {
+                  "default": "#f5f5f5ff",
+                  "description": "The digits in the timesUp treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "background": {
+                  "default": "#b23b3bff",
+                  "description": "The fill behind the digits in the timesUp treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "borderColor": {
+                  "default": "#f5f5f5ff",
+                  "description": "The rim around the fill in the timesUp treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "color",
+                "background",
+                "borderColor"
+              ],
+              "additionalProperties": false,
+              "description": "The timesUp treatment: what shows once a 'timesUp'-family cue fires — a muted-red panel carrying near-white digits. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
             },
-            "overColor": {
-              "default": "#B23B3B",
-              "description": "Countdown color in overtime. Default: the same muted red as timesUpColor — the pulse, not a new hue, is what marks overtime.",
-              "type": "string",
-              "minLength": 1
+            "over": {
+              "default": {
+                "color": "#f5f5f5ff",
+                "background": "#b23b3bff",
+                "borderColor": "#f5f5f5ff"
+              },
+              "type": "object",
+              "properties": {
+                "color": {
+                  "default": "#f5f5f5ff",
+                  "description": "The digits in the over treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "background": {
+                  "default": "#b23b3bff",
+                  "description": "The fill behind the digits in the over treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "borderColor": {
+                  "default": "#f5f5f5ff",
+                  "description": "The rim around the fill in the over treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "color",
+                "background",
+                "borderColor"
+              ],
+              "additionalProperties": false,
+              "description": "The over treatment: what shows in overtime — the same muted red as timesUp, because the pulse rather than a new hue is what marks overtime. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
             },
-            "clearedColor": {
-              "default": "#9E9E9E",
-              "description": "Color of the wall clock shown in the cleared state, which is also the fallback of last resort before any usable timer state has arrived. Default: gray.",
-              "type": "string",
-              "minLength": 1
+            "cleared": {
+              "default": {
+                "color": "#9e9e9eff",
+                "background": "#101418ff",
+                "borderColor": "#9e9e9eff"
+              },
+              "type": "object",
+              "properties": {
+                "color": {
+                  "default": "#9e9e9eff",
+                  "description": "The digits in the cleared treatment, as '#rrggbb' or '#rrggbbaa' — six digits mean opaque. Contrast-neutral by default: the stage hue is carried by the fill, not the glyphs.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "background": {
+                  "default": "#101418ff",
+                  "description": "The fill behind the digits in the cleared treatment, as '#rrggbb' or '#rrggbbaa'. This is where the stage colour lives, because a filled panel reads from the back of a room where coloured glyphs do not.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "borderColor": {
+                  "default": "#9e9e9eff",
+                  "description": "The rim around the fill in the cleared treatment, as '#rrggbb' or '#rrggbbaa'. Invisible until the face's borderThickness is raised above zero.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "color",
+                "background",
+                "borderColor"
+              ],
+              "additionalProperties": false,
+              "description": "The cleared treatment: the wall clock's own treatment, which is also the fallback of last resort before any usable timer state has arrived — a lifecycle state rather than an escalation stage, and the one face that stays ambient: a dark fill with grey digits. Three colours — the digits, the fill that carries the stage hue, and the rim — each '#rrggbb' or '#rrggbbaa'. Opacity is a colour's own alpha, so there is no opacity field to drift from its hue, and all three cross-fade together over transitionMs because a cue crossing is one visual event."
+            },
+            "geometry": {
+              "default": {
+                "padding": {
+                  "top": 6,
+                  "right": 6,
+                  "bottom": 6,
+                  "left": 6
+                },
+                "borderThickness": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "cornerRadius": 0
+              },
+              "type": "object",
+              "properties": {
+                "padding": {
+                  "default": {
+                    "top": 6,
+                    "right": 6,
+                    "bottom": 6,
+                    "left": 6
+                  },
+                  "type": "object",
+                  "properties": {
+                    "top": {
+                      "default": 6,
+                      "description": "The inset between the face's edge and the digits at the top, in percent of slot HEIGHT.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "right": {
+                      "default": 6,
+                      "description": "The inset between the face's edge and the digits at the right, in percent of slot WIDTH.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "bottom": {
+                      "default": 6,
+                      "description": "The inset between the face's edge and the digits at the bottom, in percent of slot HEIGHT.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "left": {
+                      "default": 6,
+                      "description": "The inset between the face's edge and the digits at the left, in percent of slot WIDTH.",
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The gutter inside the face: the fill covers the whole slot, this insets what is drawn on it, and the Viewbox scales the digits uniformly into what is left. Four-sided, in percent of the slot, each side against its own axis — top and bottom against height, left and right against width. This is the one meaning of the inset both heads implement; neither keeps a margin of its own."
+                },
+                "borderThickness": {
+                  "default": {
+                    "top": 0,
+                    "right": 0,
+                    "bottom": 0,
+                    "left": 0
+                  },
+                  "type": "object",
+                  "properties": {
+                    "top": {
+                      "default": 0,
+                      "description": "The rim's thickness at the top, in percent of slot HEIGHT.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "right": {
+                      "default": 0,
+                      "description": "The rim's thickness at the right, in percent of slot WIDTH.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "bottom": {
+                      "default": 0,
+                      "description": "The rim's thickness at the bottom, in percent of slot HEIGHT.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "left": {
+                      "default": 0,
+                      "description": "The rim's thickness at the left, in percent of slot WIDTH.",
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The rim's thickness, drawn inside the fill's edge in the stage's borderColor. Four-sided, in percent of the slot, each side against its own axis — top and bottom against height, left and right against width. Zero on every side by default, so the default face is a plain filled panel and borderColor shows nothing until this is raised."
+                },
+                "cornerRadius": {
+                  "default": 0,
+                  "description": "How far the face's corners are rounded, in percent of the slot's SHORTER side — a radius is one length applied in both axes, so the shorter side is what bounds it. 50 is a pill; above 50 clamps to 50, in the shared ViewModel, so neither head invents a maximum of its own. Square by default, because slots tile.",
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "padding",
+                "borderThickness",
+                "cornerRadius"
+              ],
+              "additionalProperties": false,
+              "description": "The running countdown's face, shared by all four escalation stages. All geometry is percent of the slot, so one number holds on a confidence monitor and on a video wall and authoring it needs no knowledge of the Viewbox. Geometry follows the FACE rather than the stage, which is what stops a cue crossing from moving the digits: colour changes, geometry does not."
+            },
+            "clearedGeometry": {
+              "default": {
+                "padding": {
+                  "top": 6,
+                  "right": 6,
+                  "bottom": 6,
+                  "left": 6
+                },
+                "borderThickness": {
+                  "top": 0,
+                  "right": 0,
+                  "bottom": 0,
+                  "left": 0
+                },
+                "cornerRadius": 0
+              },
+              "type": "object",
+              "properties": {
+                "padding": {
+                  "default": {
+                    "top": 6,
+                    "right": 6,
+                    "bottom": 6,
+                    "left": 6
+                  },
+                  "type": "object",
+                  "properties": {
+                    "top": {
+                      "default": 6,
+                      "description": "The inset between the face's edge and the digits at the top, in percent of slot HEIGHT.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "right": {
+                      "default": 6,
+                      "description": "The inset between the face's edge and the digits at the right, in percent of slot WIDTH.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "bottom": {
+                      "default": 6,
+                      "description": "The inset between the face's edge and the digits at the bottom, in percent of slot HEIGHT.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "left": {
+                      "default": 6,
+                      "description": "The inset between the face's edge and the digits at the left, in percent of slot WIDTH.",
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The gutter inside the face: the fill covers the whole slot, this insets what is drawn on it, and the Viewbox scales the digits uniformly into what is left. Four-sided, in percent of the slot, each side against its own axis — top and bottom against height, left and right against width. This is the one meaning of the inset both heads implement; neither keeps a margin of its own."
+                },
+                "borderThickness": {
+                  "default": {
+                    "top": 0,
+                    "right": 0,
+                    "bottom": 0,
+                    "left": 0
+                  },
+                  "type": "object",
+                  "properties": {
+                    "top": {
+                      "default": 0,
+                      "description": "The rim's thickness at the top, in percent of slot HEIGHT.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "right": {
+                      "default": 0,
+                      "description": "The rim's thickness at the right, in percent of slot WIDTH.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "bottom": {
+                      "default": 0,
+                      "description": "The rim's thickness at the bottom, in percent of slot HEIGHT.",
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "left": {
+                      "default": 0,
+                      "description": "The rim's thickness at the left, in percent of slot WIDTH.",
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "top",
+                    "right",
+                    "bottom",
+                    "left"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The rim's thickness, drawn inside the fill's edge in the stage's borderColor. Four-sided, in percent of the slot, each side against its own axis — top and bottom against height, left and right against width. Zero on every side by default, so the default face is a plain filled panel and borderColor shows nothing until this is raised."
+                },
+                "cornerRadius": {
+                  "default": 0,
+                  "description": "How far the face's corners are rounded, in percent of the slot's SHORTER side — a radius is one length applied in both axes, so the shorter side is what bounds it. 50 is a pill; above 50 clamps to 50, in the shared ViewModel, so neither head invents a maximum of its own. Square by default, because slots tile.",
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "padding",
+                "borderThickness",
+                "cornerRadius"
+              ],
+              "additionalProperties": false,
+              "description": "The cleared wall clock's face — the second of the two, and the only other one. All geometry is percent of the slot, so one number holds on a confidence monitor and on a video wall and authoring it needs no knowledge of the Viewbox. Geometry follows the FACE rather than the stage, which is what stops a cue crossing from moving the digits: colour changes, geometry does not."
             },
             "pulseOnOver": {
               "default": true,
-              "description": "Whether the overtime display pulses — a subtle pulse, never a flash. On by default.",
+              "description": "Whether the overtime display pulses — a subtle pulse, never a flash, and it breathes the text alone so a translucent face never pulses what sits behind it. On by default.",
               "type": "boolean"
             },
             "transitionMs": {
               "default": 300,
-              "description": "How long a view takes to cross-fade between stage colors, in whole MILLISECONDS — the unit is in the name because every other duration in this contract counts in seconds. 0 switches instantly.",
+              "description": "How long a view takes to cross-fade between stage treatments, in whole MILLISECONDS — the unit is in the name because every other duration in this contract counts in seconds. All three colours fade together, because a cue crossing is one visual event. 0 switches instantly.",
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
@@ -67,16 +450,18 @@
           },
           "required": [
             "target",
-            "noneColor",
-            "warnColor",
-            "timesUpColor",
-            "overColor",
-            "clearedColor",
+            "none",
+            "warn",
+            "timesUp",
+            "over",
+            "cleared",
+            "geometry",
+            "clearedGeometry",
             "pulseOnOver",
             "transitionMs"
           ],
           "additionalProperties": false,
-          "description": "The timer component's config: which timer it watches, the stage palette it renders with, and its transition effects. Present iff contentType is 'timer'."
+          "description": "The timer component's config: which timer it watches, the per-stage palette of digits, fill and rim it paints with, the per-face geometry it paints into, and its transition effects. Present iff contentType is 'timer'."
         }
       },
       "required": [
