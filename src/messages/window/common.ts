@@ -19,18 +19,22 @@ import { z } from "zod";
  * mtngtools/mtng-dotnet-mono#319 (an operator-facing report of two plain fields, and the
  * identical backdrop.asset-unresolved already crosses) and by the placement verdicts —
  * display-unsatisfied, bounds-overflowed — with mtngtools/mtng-dotnet-mono#316, on the same
- * reasoning: operator-facing reports, and a room console is TS. The config-carrying messages
- * (set-window, patch-window, set-bounds) are ruled single-language: their shape-discriminated
- * geometry unions cannot ride the oneOf-less mirror, so their one spelling lives hand-authored
- * on the .NET side. A *resolved* rectangle is not a union, which is why the verdicts cross
- * where the configs do not.
+ * reasoning: operator-facing reports, and a room console is TS.
+ *
+ * **Every message in this domain is authored here, exported or not** (ADR-0026,
+ * mtngtools/mtng-dotnet-mono#471). The config-carrying messages — set-window, patch-window,
+ * set-bounds — plus close and the snapshot pair are mirrored into C# like everything else and
+ * simply stay off the barrel; §Dual-language surface used to call them single-language because
+ * their geometry unions could not ride the oneOf-less mirror, and that reason is spent: the
+ * unions were removed rather than the mirror taught. See `config.ts` for the dialect that
+ * replaced them, and `src/index.ts` for what keeps each of them off the barrel now.
  *
  * The authoring rules these follow (`.describe()` over JSDoc, `z.enum` over `z.literal`, no
  * `z.discriminatedUnion`, no `.nullable()`) are in the repo README, with the generator output
  * that settles each one.
  */
 
-const envelopeCore = <TType extends string, TKind extends "event" | "command">(
+const envelopeCore = <TType extends string, TKind extends "event" | "command" | "rpc">(
   type: TType,
   kind: TKind,
 ) => ({
@@ -78,17 +82,35 @@ export const windowCommandEnvelope = <TType extends string>(type: TType) => ({
  * desired state and re-emits the whole-config Set. Target is required — sugar expands to
  * exactly one patch, and a patch with nobody to patch is meaningless.
  */
-export const windowManagerTargetedCommandEnvelope = <TType extends string>(type: TType) => ({
+export const windowManagerTargetedCommandEnvelope = <TType extends string>(
+  type: TType,
+  targetDescription = "The WindowId whose stored desired state this command patches — the " +
+    "<target> routing segment. Required: the sugar expands to exactly one patch. Bound by " +
+    "the Windows State Manager, not by any window, even though the key names a WindowId.",
+) => ({
   ...envelopeCore(type, "command"),
-  target: z
-    .string()
-    .min(1)
-    .describe(
-      "The WindowId whose stored desired state this command patches — the <target> routing " +
-        "segment. Required: the sugar expands to exactly one patch. Bound by the Windows " +
-        "State Manager, not by any window, even though the key names a WindowId.",
-    ),
+  target: z.string().min(1).describe(targetDescription),
 });
+
+/**
+ * The envelope of a **Manager-addressed RPC request**: `{type, domain, kind, ts}`, no target.
+ *
+ * `window.request-windows-state` addresses the Manager, whose store is room-wide, and the
+ * reply it answers with owns the whole collection rather than one window's slice — so there is
+ * no window to name and the field does not exist rather than being optional.
+ */
+export const windowManagerRpcEnvelope = <TType extends string>(type: TType) =>
+  envelopeCore(type, "rpc");
+
+/**
+ * The envelope of a **room-wide event**: `{type, domain, kind, ts}`, no target segment.
+ *
+ * The state document is the one holder. Every window event above speaks for one window and so
+ * carries a target; the Manager's document speaks for the whole room's desired state, and
+ * naming a window on it would invite a reader to think it carried only that window's slice.
+ */
+export const windowRoomEventEnvelope = <TType extends string>(type: TType) =>
+  envelopeCore(type, "event");
 
 /**
  * The envelope of a **Manager-addressed, room-wide command**: `{type, domain, kind, ts}`,

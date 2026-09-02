@@ -1,13 +1,19 @@
 /**
- * The dual-language ALLOW-LIST.
+ * The TypeScript consumers' ALLOW-LIST.
  *
- * A message crosses the TS <-> .NET boundary *only* if it is re-exported here.
- * Anything not exported from this barrel is single-language by default. Keep this
- * surface small and intentional (ADR-0005).
+ * A message reaches a **TypeScript** consumer only if it is re-exported here. Anything not
+ * exported from this barrel is single-language by default. Keep this surface small and
+ * intentional (ADR-0005).
  *
- * Every export must be a Zod schema whose name is PascalCase: `npm run generate` emits one
- * `schemas/<kebab-case>.schema.json` per export, and that export name becomes the C# class name
- * on the .NET side.
+ * **This is not the codegen list** (mtng-dotnet-mono ADR-0026). Every wire message is authored
+ * in Zod under `src/messages/` and mirrored into C#, whether or not it is named here —
+ * `npm run generate` walks the message modules, not this file. What this file decides is who
+ * *receives* a type, which is the half of ADR-0005's scope clause that survived; the other
+ * half, deciding whether C# exists at all, is how four hand-authored C# wire types accumulated
+ * outside the drift gate.
+ *
+ * Every export must be a Zod schema whose name is PascalCase. The export name is also the
+ * schema file name (kebab-cased) and the C# class name, so renaming one renames all three.
  */
 // backdrop domain — the floor app's message set, all five dual-language (ADR-0005): the only
 // plausible senders are TS-side, and a commands-dual/events-single split would let a console
@@ -29,11 +35,26 @@ export { WindowSlotContentFailed } from "./messages/window/events.ts";
 
 // window domain — the configuration surface's dual-language slice, ruled per message by
 // mtngtools/mtng-dotnet-mono#315 (MTWindows wire-messages.md §Dual-language surface): the
-// sugar verbs, the named-state pair, and the rejection report cross here. The config-carrying
-// messages (set-window, patch-window, set-bounds) are ruled single-language: their geometry
-// fields are shape-discriminated unions this generator cannot mirror (no oneOf/anyOf survives
-// to C#), so their one spelling lives hand-authored on the .NET side — revisitable if the
-// mirror ever learns unions.
+// sugar verbs, the named-state pair, and the rejection report cross here.
+//
+// The config-carrying messages — set-window, patch-window, set-bounds — stay OFF this barrel,
+// but no longer for #315's reason. That reason was the mirror's: their geometry values were
+// shape-discriminated unions and no oneOf/anyOf survives to C#. ADR-0026 removed the unions
+// rather than teaching the mirror, so the argument is spent, and all three are now authored in
+// Zod and mirrored like everything else (mtngtools/mtng-dotnet-mono#471). What keeps them off
+// the barrel is the repo's own default: single-language until a TypeScript consumer needs
+// them. Nothing in mtng-mono sends a window config today, and exporting later is additive
+// while un-exporting is breaking — so the cheap direction is to wait for the consumer.
+//
+// window.close is off for its own reason, unchanged: every producer and its one consumer are
+// .NET (mtngtools/mtng-dotnet-mono#314).
+//
+// window.request-windows-state and window.desired-state-changed are off too, and this is the
+// one that is genuinely arguable — every other domain's snapshot-plus-state pair crosses
+// (TimerCurrentState/TimerStateChanged, PresentationCurrentState/PresentationStateChanged).
+// Those crossed because TS *displays* consume them. The window domain's consumers are .NET
+// screen machines; a TS room console reading the room's desired state is plausible and
+// unbuilt, and the day it exists this is two lines.
 export {
   WindowApplyState,
   WindowClear,
@@ -50,9 +71,8 @@ export { WindowAssetUnresolved } from "./messages/window/events.ts";
 
 // window domain — the placement verdicts, ruled dual-language by
 // mtngtools/mtng-dotnet-mono#316 on the reasoning #315 gave config-rejected: these are
-// operator-facing reports, and a room console is TS. Both are pure events with flat fields,
-// so nothing here strains the mirror — the geometry UNIONS are what kept set-window
-// single-language, and a resolved rectangle is not a union.
+// operator-facing reports, and a room console is TS. Both are pure events with flat fields:
+// two resolved rectangles, which were never a union even when set-window's geometry was one.
 export {
   WindowBoundsOverflowed,
   WindowDisplayUnsatisfied,
