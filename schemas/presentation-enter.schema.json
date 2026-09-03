@@ -108,6 +108,16 @@
         "timer": {
           "type": "object",
           "properties": {
+            "minutes": {
+              "description": "The phase's RESOLVED CONCRETE duration in minutes — Resolved-tier output like the rest of the group, fractions allowed. Slots in as the phase's own calculated minutes: the Timer manager's allocation basis, and the denominator a percent floor or cap measures against. An authored, qualifying 'remaining' hint still wins the basis, exactly as in Linked — this member rides below the hint machinery, not above it. 0 is an authored no-time. Absent keeps today's behavior — basis 0 unless a remaining hint switches it — no new absence meaning.",
+              "type": "number",
+              "minimum": 0
+            },
+            "label": {
+              "description": "The phase's display name as resolved by the producer — what the timer broadcasts as the phase's name, feeding the top-level 'label' the timer's own events carry. Absent, the Timer manager's built-in phase name stands.",
+              "type": "string",
+              "minLength": 1
+            },
             "phaseCues": {
               "description": "The phase's cue set as AUTHORED, in phaseCue's symbolic form — refs already dereferenced and any preset applied, but thresholds not reduced. The Timer manager reduces them to concrete clock values at phase load, because a percent threshold measures against a starting timer value that is not fixed until the phase starts. Deliberately NOT the reduced timerCue the timer broadcasts on timer.state-changed.",
               "type": "array",
@@ -129,7 +139,7 @@
                   },
                   "at": {
                     "type": "number",
-                    "description": "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by atUnits. Unlike the wire's 'minutes', a negative here is a direction and never an auto-mode sentinel."
+                    "description": "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by atUnits. Unlike upstream's phase-config 'minutes', a negative here is a direction and never an auto-mode sentinel. (The timer group's own 'minutes' admits no negative at all — resolution already answered auto.)"
                   },
                   "atUnits": {
                     "description": "The unit of |at|; absent means 'minutes'. 'percent' measures against the phase's STARTING TIMER VALUE — what the timer starts the phase from, after any 'remaining' basis-switch and up-front floor/cap. That is NOT the floor/cap basis, which is the phase's initial calculated minutes. There is no [0,100] clamp: a percent may resolve outside the phase, exactly as a large absolute value can. A percent cue is dropped when the starting value is 0; an absolute cue is always kept.",
@@ -212,7 +222,7 @@
             }
           },
           "additionalProperties": false,
-          "description": "SelfContained only: what the producer ran the Resolved tier over for the timer — the phase's authored cue set, its hint set, and its load directive, inline and ref-free. Timer manager only. Still symbolic: the timer runs the Runtime tier over them in both dialects. Absent in a Linked room, where the Timer manager runs the Resolved tier too. Every member is optional and at least one is present."
+          "description": "SelfContained only: what the producer ran the Resolved tier over for the timer — the phase's concrete minutes and display label, its authored cue set, its hint set, and its load directive, inline and ref-free. Timer manager only. Cues and hints stay symbolic — the timer runs the Runtime tier over them in both dialects. Absent in a Linked room, where the Timer manager runs the Resolved tier too. Every member is optional and at least one is present."
         },
         "file": {
           "type": "object",
