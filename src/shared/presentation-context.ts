@@ -145,16 +145,40 @@ export const sessionGroup = z
  * including a preset that would have carried `load`.
  *
  * **Only the Resolved tier moves.** The **Runtime** tier stays the Timer manager's in both
- * dialects, because only it is time-dependent: these members are still symbolic, and the timer
- * reduces them against live signals and the clock at phase load
- * (mtngtools/mtng-dotnet-mono#382).
+ * dialects, because only it is time-dependent: the cue and hint members are still symbolic, and
+ * the timer reduces them against live signals and the clock at phase load
+ * (mtngtools/mtng-dotnet-mono#382). `minutes` and `label` are already concrete — for them the
+ * Resolved tier left nothing to reduce (mtngtools/mtng-dotnet-mono#517).
  *
- * The three arrive independently: a presentation with no cues authored is ordinary, hints are
- * rarer still, and a producer saying nothing about `load` leaves the Timer manager's own rungs —
- * host `phaseLoading`, then the `ignore` floor — to answer.
+ * The members arrive independently: a presentation with no cues authored is ordinary, hints are
+ * rarer still, a producer saying nothing about `load` leaves the Timer manager's own rungs —
+ * host `phaseLoading`, then the `ignore` floor — to answer, and one saying nothing about
+ * `minutes` or `label` leaves today's behavior standing.
  */
 export const timerGroup = z
   .strictObject({
+    minutes: z
+      .number()
+      .nonnegative()
+      .optional()
+      .describe(
+        "The phase's RESOLVED CONCRETE duration in minutes — Resolved-tier output like the rest " +
+          "of the group, fractions allowed. Slots in as the phase's own calculated minutes: the " +
+          "Timer manager's allocation basis, and the denominator a percent floor or cap " +
+          "measures against. An authored, qualifying 'remaining' hint still wins the basis, " +
+          "exactly as in Linked — this member rides below the hint machinery, not above it. " +
+          "0 is an authored no-time. Absent keeps today's behavior — basis 0 unless a " +
+          "remaining hint switches it — no new absence meaning.",
+      ),
+    label: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "The phase's display name as resolved by the producer — what the timer broadcasts as " +
+          "the phase's name, feeding the top-level 'label' the timer's own events carry. " +
+          "Absent, the Timer manager's built-in phase name stands.",
+      ),
     phaseCues: z
       .array(phaseCue)
       .optional()
@@ -175,9 +199,15 @@ export const timerGroup = z
     load: load.optional(),
   })
   .check((ctx) => {
-    const { phaseCues, timerHints, load: loadValue } = ctx.value;
+    const { minutes, label, phaseCues, timerHints, load: loadValue } = ctx.value;
 
-    if (phaseCues === undefined && timerHints === undefined && loadValue === undefined) {
+    if (
+      minutes === undefined &&
+      label === undefined &&
+      phaseCues === undefined &&
+      timerHints === undefined &&
+      loadValue === undefined
+    ) {
       ctx.issues.push({
         code: "custom",
         input: ctx.value,
@@ -188,10 +218,11 @@ export const timerGroup = z
   })
   .describe(
     "SelfContained only: what the producer ran the Resolved tier over for the timer — the " +
-      "phase's authored cue set, its hint set, and its load directive, inline and ref-free. " +
-      "Timer manager only. Still symbolic: the timer runs the Runtime tier over them in both " +
-      "dialects. Absent in a Linked room, where the Timer manager runs the Resolved tier too. " +
-      "Every member is optional and at least one is present.",
+      "phase's concrete minutes and display label, its authored cue set, its hint set, and its " +
+      "load directive, inline and ref-free. Timer manager only. Cues and hints stay symbolic — " +
+      "the timer runs the Runtime tier over them in both dialects. Absent in a Linked room, " +
+      "where the Timer manager runs the Resolved tier too. Every member is optional and at " +
+      "least one is present.",
   );
 
 /**

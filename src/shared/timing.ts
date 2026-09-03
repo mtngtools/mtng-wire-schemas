@@ -109,8 +109,9 @@ export const phaseCue = z
       .number()
       .describe(
         "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by " +
-          "atUnits. Unlike the wire's 'minutes', a negative here is a direction and never an " +
-          "auto-mode sentinel.",
+          "atUnits. Unlike upstream's phase-config 'minutes', a negative here is a direction " +
+          "and never an auto-mode sentinel. (The timer group's own 'minutes' admits no " +
+          "negative at all — resolution already answered auto.)",
       ),
     atUnits: timingUnit
       .optional()
