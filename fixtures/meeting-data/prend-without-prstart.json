@@ -1,0 +1,11 @@
+{
+  "name": "prend-without-prstart",
+  "wire": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prEnd": "2026-09-29T14:30:00Z"
+  },
+  "expected": {
+    "rejected": true
+  }
+}

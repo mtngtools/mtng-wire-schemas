@@ -1,0 +1,19 @@
+{
+  "name": "window-absent",
+  "wire": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine"
+  },
+  "expected": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prStart": 0,
+    "prEnd": 0,
+    "prSpeakers": [],
+    "filled": [
+      "prEnd",
+      "prSpeakers",
+      "prStart"
+    ]
+  }
+}

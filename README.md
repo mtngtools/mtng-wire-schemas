@@ -46,14 +46,17 @@ mtng-wire-schemas/
       backdrop/              #   the floor app's set: commands, events + shared pieces
       presentation/          #   the Present manager's set: the pointer + its navigation echo,
                              #   the snapshot rpc, and 6 commands (enter/exit, four goto-*)
-      timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces
+      timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces;
+                             #   documents.ts holds TimerPresets, the Timer:Presets document
       window/                #   the window domain, whole: the slot-content trio, the
                              #   sugar verbs and named-state pair, the reports, the
                              #   config-carrying commands (set-window, patch-window,
                              #   set-bounds), close, and the snapshot rpc + state
                              #   document; config.ts holds the dialect they share
   schemas/                   # emitted JSON Schema (GENERATED — do not hand-edit)
-    <message>.schema.json    #   one file per authored message
+    <message>.schema.json    #   one file per authored message or document
+  fixtures/                  # conformance corpora: { name, wire, expected } cases both
+    meeting-data/            #   consumers run — the wire -> reliable PresentationFull fill
   scripts/generate.mjs       # the emitter: src/messages/ (Zod) -> schemas/ (JSON Schema)
   tests/                     # the suite: every .check(), the emitted schemas as the mirror
                              #   reads them — plain node, `npm test`
@@ -94,12 +97,58 @@ time, not a shape at a time.
   message that embeds it. `WindowSlotContent` is the one non-message export, and only because it
   is a closed union the TS side has to narrow on.
 
+### Documents — schemas that ride no exchange
+
+A **document** is a PascalCase Zod export under `src/messages/` that is not a message: it carries
+no envelope — no `type`, `domain`, `kind`, `ts` — because nothing routes it. The emitter walks it
+like a message (one schema file, one `.g.cs`, the same drift gate), and a consumer reads it from
+somewhere other than the bus: a configuration section, a file. `TimerPresets` in
+[`src/messages/timer/documents.ts`](src/messages/timer/documents.ts) is the first — the value
+under the `Timer:Presets` configuration key, the room's own level of the named-set and preset
+library, authored in the same vocabulary a producer puts on the wire so a host spells `label`,
+`phaseCues`, `timerHints`, `load`, `cuesRef` and `timerHintsRef` one way everywhere
+(mtng-dotnet-mono ADR-0033, `Core.TimerPresets` spec). The window state document was the
+precedent, hosted on a message; a document stands alone.
+
+Authored like a message in every other way — `.describe()`, `strictObject`, tagged records, the
+per-phase record rule below — and exported from the barrel on the same terms: a document reaches
+TypeScript consumers only when one needs it.
+
+### Fixture sets — `fixtures/`
+
+A **fixture set** is a directory of cases under `fixtures/<set>/`, one JSON file per case, that
+two hand-written implementations are held to — the shared contract mtng-dotnet-mono ADR-0012
+calls a conformance corpus. This repo validates each case's `wire` half against the schema in
+`npm run check`; each consumer runs the whole set at the pinned commit, and the side that drifts
+fails. [`fixtures/meeting-data/`](fixtures/meeting-data/) is the first set shipped: the wire →
+reliable `PresentationFull` fill (`Core.MeetingData` in .NET, `mtng-mono`'s helper in TS), and it
+fixes the conventions a later set follows.
+
+<!-- TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM -->
+<!-- the fixture file conventions below — `expected` as the flat reliable view carrying `filled`, `{ "rejected": true }` for a wire the schema refuses, `null` for the group absent, unix milliseconds for every datetime in `expected`, and dotted wire paths in `filled` — over nesting the view under `expected.presentation`, a top-level `rejects` flag, and ISO strings with a sentinel; the tickets fixed `{ name, wire, expected }` with `expected.filled` and the `0` fill, and the rest is what makes one file readable by three implementations -->
+Every case is `{ "name", "wire", "expected" }`, `name` equal to the file's stem:
+
+- **`wire`** is the input exactly as the schema admits it — for `meeting-data`, the `presentation`
+  group — or `null` for the case where the group is absent.
+- **`expected`** is what the consumer's mapping produces. For `meeting-data` that is the reliable
+  view, **flat, in the wire's spellings**: upstream's required members always set, every
+  datetime as **unix milliseconds** (upstream's encoding, and the one in which the `0` fill is
+  an honest epoch), `prModerators` and `prModeratorIds` folded into upstream's one `prModerators`
+  (an id that matches a `prSpeakers` entry resolves to it, any other passes as an id),
+  `spOrder`/`spOrderKey` folded into one `spOrder`, and the bags and tags passed through — plus
+  **`filled`**: the sorted list of members the wire left absent, as dotted wire paths
+  (`prStart`, `prSpeakers`, `prPhasesCalculated.phases.talk.end`), each filled with its type's
+  honest empty (`0`, `[]`). `null` when `wire` is `null`; `{ "rejected": true }` for the one
+  case that asserts the wire refuses the input, so the mapping never sees it.
+- The consumer's `Filled` set spells its names exactly as `filled` does — byte for byte.
+
 ### Authoring rules
 
 - **A message is a PascalCase Zod export under `src/messages/`; a piece is camelCase.** That is
   what the emitter walks, so the convention is load-bearing rather than cosmetic — a message
   named `windowSetWindow` would silently never mirror. The export name becomes the schema file
-  name (kebab-cased) *and* the C# class name, so renaming a message renames both.
+  name (kebab-cased) *and* the C# class name, so renaming a message renames both. A document is
+  a PascalCase export too, and mirrors the same way.
 - **Document fields with `.describe()`, not JSDoc.** Only `.describe()` reaches the emitted JSON
   Schema, and from there the generated C# XML doc comments.
 - **A `.describe()` on a wrapper replaces the one on the schema it wraps.**
@@ -166,7 +215,7 @@ it is what the emitter runs. Two kinds of test live there: every invariant a `.c
 (the mirror carries structure only, so this is the one place the invariants are proven), and the
 emitted `schemas/` read the way NJsonSchema will read them — no `oneOf`, no nullable, every
 object closed but the named bags, and never two differently-shaped objects under one mirror name
-in one message.
+in one message. The fixture sets under `fixtures/` are validated here too.
 
 The emitter is Zod v4's **native `z.toJSONSchema()`** (draft-07), not a third-party generator:
 it is the only one that carries Zod's constraints through to the emitted schema, and from there
@@ -187,5 +236,16 @@ what executes and there is no compiled copy to fall out of date.
     `OsExplicit` keeps `{ "pixels": n }`, told apart as before by `position.display` being
     absent. Nothing is deployed and no seed exists in the field, so the cost is signalling
     rather than compatibility.
+  - **0.17.0 breaks the presentation dialect.** One `presentation` group — upstream's
+    `PresentationFull` field for field, with the Calculated tier (`prPhasesCalculated`,
+    `prPhasesPreset`, refs intact) and the named bags `prMetadata` / `spMetadata` — replaces the
+    `timer` and `block` groups on `presentation.enter` and `presentation.state-changed`, and both
+    are gone from `timer.state-changed` and `timer.cue-fired` too, which instead gain `prId` and
+    `phase`. Two renames under the `pr` prefix standard: `presentationId` → `prId` on the core of
+    `enter` and `state-changed`, and `presentationSubDirectory` → `prSubDirectory` on the file
+    path. `session` and `files` are unchanged, and every group may now be sent in either room
+    dialect. Also new, not breaking: the `TimerPresets` document and `fixtures/meeting-data/`.
+    Nothing is deployed, so the cost is signalling rather than compatibility (mtng-dotnet-mono
+    ADR-0033; #733, #734, #735).
 - Cut a release: bump `package.json`, regenerate `schemas/`, commit, then
   `git tag vX.Y.Z && git push --tags`.

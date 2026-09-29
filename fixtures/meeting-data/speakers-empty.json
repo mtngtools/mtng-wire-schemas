@@ -1,0 +1,18 @@
+{
+  "name": "speakers-empty",
+  "wire": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prStart": "2026-09-29T14:00:00Z",
+    "prEnd": "2026-09-29T14:30:00Z",
+    "prSpeakers": []
+  },
+  "expected": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prStart": 1790690400000,
+    "prEnd": 1790692200000,
+    "prSpeakers": [],
+    "filled": []
+  }
+}
