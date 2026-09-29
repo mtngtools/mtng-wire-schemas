@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/ResearchFreeFormRecordWholeMessage",
+  "definitions": {
+    "ResearchFreeFormRecordWholeMessage": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {},
+      "description": "Candidate D: the whole message is an open bag, no fixed fields anywhere."
+    }
+  }
+}
