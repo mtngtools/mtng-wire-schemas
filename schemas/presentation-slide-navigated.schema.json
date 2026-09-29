@@ -43,7 +43,7 @@
           "description": "Which navigation was actuated — the <value> of the goto-<value>-slide command this echoes. One event carries all four because the commands' split into four routing keys exists to make each an authorization subject, which is a write-side concern. Without this member a client could not tell its own goto-next-slide from another operator's goto-first-slide."
         },
         "instanceId": {
-          "description": "Which presentation instance this concerns — the machine or process with the file open. MATCHED BYTE-WISE, NEVER PARSED, like presentationId, and loose on purpose: it exists so a producer can reconcile with itself, not so anything routes on it. It is the same id the pointer's files array is keyed by. Absent addresses the room's presentation instance; which one a multi-lectern room means is the driver's, because actuation stops at the Manager.",
+          "description": "Which presentation instance this concerns — the machine or process with the file open. MATCHED BYTE-WISE, NEVER PARSED, like prId, and loose on purpose: it exists so a producer can reconcile with itself, not so anything routes on it. It is the same id the pointer's files array is keyed by. Absent addresses the room's presentation instance; which one a multi-lectern room means is the driver's, because actuation stops at the Manager.",
           "type": "string",
           "minLength": 1
         }

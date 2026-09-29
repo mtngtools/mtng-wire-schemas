@@ -1,99 +1,69 @@
 import { z } from "zod";
-import { load, phaseCue, timerHint } from "./timing.ts";
+import { presentation } from "./meeting-data.ts";
 
 /**
- * The `SelfContained` dialect's four optional groups, shared by the `presentation` and `timer`
- * domains (ADR-0024; mtngtools/mtng-dotnet-mono#372, #378, #379, #380).
+ * The optional groups the `presentation` and `timer` domains share — `session` and `files`
+ * defined here, and the `presentation` group assembled from `meeting-data.ts` (ADR-0033,
+ * superseding ADR-0024; mtngtools/mtng-dotnet-mono#372, #378, #379, #380, #714, #720, #722).
  *
- * A `SelfContained` room has **no Meeting data manager**, so `presentationId` on any message
- * points at nothing a consumer can resolve. Either the context rides along or it is unreachable —
- * the join target does not exist. These groups are that context, and they ride
- * `presentation.state-changed`, `timer.state-changed` and `timer.cue-fired` alike.
+ * The four members on the pointer's core — `phase`, `prId`, `actualPrStart`, `enteredAt` — are
+ * needed in both dialects and are always present. The groups are what a producer knows besides,
+ * carried on the same message: the presentation itself, the session containing it, and the
+ * machines with a file open for it. `presentation.state-changed` and `presentation.enter` carry
+ * all three (`enter` with a singular `file`); `timer.state-changed` and `timer.cue-fired` carry
+ * `session` and `files` only, plus the key of what they time.
  *
- * In a `Linked` room every one of them is **absent**: there the join target does exist, and
- * fattening these messages would put a second copy of the Meeting data manager's data on the
- * highest-frequency traffic on the bus.
+ * **A producer may always send a group, whatever the room's dialect.** `DataLoadMode` names the
+ * source the Timer manager reads — its schedule or the pointer — not what may arrive: a `Linked`
+ * manager takes only the key from the pointer and never falls back to the group, and a display
+ * reads one source per field and never arbitrates freshness between the group and the Meeting
+ * data manager's broadcast. A producer that sends ids only confirms the room is `Linked` first;
+ * one that always sends the group need not know.
  *
  * **Each group is independently optional; within a group its required members are required.** Not
  * all-or-nothing, because real producers have partial knowledge — a live panel with no file has
  * no `files`, a presentation with no cues authored is ordinary, a producer may not model sessions
- * at all. Not a flat bag either: ~11 optional members would carry no invariants, leaving every
- * consumer its own defensive join.
+ * at all. Not a flat bag either: dozens of optional members would carry no invariants, leaving
+ * every consumer its own defensive join, and some pairs are meaningless apart — `prEnd` without
+ * `prStart`, or percent-unit hints without the block window they are a percentage of.
  *
- * **An empty group is not a third state.** A group whose members are all absent says exactly what
- * absence of the group says, so each `.check()` below rejects it — a producer with nothing to say
- * omits the group. `oneOf` does not survive the C# mirror, so every invariant here rides a
- * `.check()` and the mirror carries structure only, exactly as the pointer's own body invariant
- * does.
+ * **An empty group is not a third state.** A `session` whose members are all absent says exactly
+ * what absence of the group says, so its `.check()` rejects it; `files` is `.min(1)`; the
+ * `presentation` group has required members and cannot be empty. `oneOf` does not survive the C#
+ * mirror, so every invariant here rides a `.check()` and the mirror carries structure only,
+ * exactly as the pointer's own body invariant does.
  *
- * Field prefixes are the upstream glossary's: `ss*` session, `pr*` presentation.
+ * **`phase: none` carries none of them.** The groups describe a presentation, and `none` is the
+ * absence of one — each carrying message's `.check()` enforces it.
+ *
+ * Field prefixes are the upstream glossary's — `ss*` session, `pr*` presentation, `sp*` speaker —
+ * and `pr` is the presentation prefix in every MT repo: `prId`, `prSubDirectory`.
  */
 
 /**
- * The presentation block: what is up now and the window it occupies.
+ * The `presentation` group — the presentation entity, carried whole.
  *
- * Two audiences with different needs — displays want `prTitle`, which in a `SelfContained` room
- * there is nothing to join for; the timer wants the window, because a `percent` hint threshold is
- * of `prEnd - prStart`. A producer may hold either without the other, so no member is
- * unconditionally required; an end without a start is what says nothing.
+ * The same schema object as {@link presentation}, so it mirrors as one C# class and documents
+ * itself once, on the shape. It is spelled out on `presentation.enter` and
+ * `presentation.state-changed` rather than folded into {@link presentationContext}: the timer's
+ * events carry `session` and `files` only, plus the key (`prId`, `phase`), because carrying the
+ * group there would put the authored `phaseCues` beside the reduced `cues` on one message — the
+ * same-name collision `phaseCues` exists to avoid — and a title is the pointer's job
+ * (mtngtools/mtng-dotnet-mono#720).
+ *
+ * Never on phase `none`. Its `prId` equals the core's — the one cross-group invariant, enforced
+ * by each carrying message's `.check()`. Everything the group contains, and every invariant
+ * inside it, is on the entity in `meeting-data.ts`.
  */
-export const blockGroup = z
-  .strictObject({
-    prTitle: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("The presentation's title, for displays that have nothing to join against."),
-    prStart: z
-      .iso
-      .datetime()
-      .optional()
-      .describe(
-        "The block's SCHEDULED start, ISO-8601 UTC. Not actualPrStart, which is the live fact " +
-          "and sits on the message's always-present core.",
-      ),
-    prEnd: z
-      .iso
-      .datetime()
-      .optional()
-      .describe(
-        "The block's SCHEDULED end, ISO-8601 UTC. With prStart it is the block window a " +
-          "percent-unit timer hint threshold is a percentage of.",
-      ),
-  })
-  .check((ctx) => {
-    const { prTitle, prStart, prEnd } = ctx.value;
-
-    if (prTitle === undefined && prStart === undefined && prEnd === undefined) {
-      ctx.issues.push({
-        code: "custom",
-        input: ctx.value,
-        path: [],
-        message: "an empty block group says what absence says — omit it",
-      });
-    }
-
-    if (prEnd !== undefined && prStart === undefined) {
-      ctx.issues.push({
-        code: "custom",
-        input: ctx.value,
-        path: ["prStart"],
-        message: "prEnd carries prStart — a window's end says nothing without its start",
-      });
-    }
-  })
-  .describe(
-    "SelfContained only: the presentation block — its title for displays, and its scheduled " +
-      "window for the timer's block-relative math. Absent in a Linked room, where the Meeting " +
-      "data manager holds it. Every member is optional and at least one is present; prEnd " +
-      "carries prStart.",
-  );
+export const presentationGroup = presentation;
 
 /**
  * The session containing the block.
  *
  * Wholly optional as a group: a third-party producer may not model sessions at all, and a room
- * that never shows session context loses nothing by its absence.
+ * that never shows session context loses nothing by its absence. The four members are what
+ * displays need today; the rest of the session entity — moderators, its own bag — is a future
+ * effort, and joins `meeting-data.ts` when it comes.
  */
 export const sessionGroup = z
   .strictObject({
@@ -102,8 +72,8 @@ export const sessionGroup = z
       .min(1)
       .optional()
       .describe(
-        "Opaque id of the session. MATCHED BYTE-WISE, NEVER PARSED, like presentationId: no " +
-          "structure is promised and equality is the only operation defined on it.",
+        "Opaque id of the session. MATCHED BYTE-WISE, NEVER PARSED, like prId: no structure is " +
+          "promised and equality is the only operation defined on it.",
       ),
     ssTitle: z.string().min(1).optional().describe("The session's title, for displays."),
     ssStart: z.iso.datetime().optional().describe("The session's scheduled start, ISO-8601 UTC."),
@@ -131,98 +101,9 @@ export const sessionGroup = z
     }
   })
   .describe(
-    "SelfContained only: the session containing the block. Absent in a Linked room, where the " +
-      "Meeting data manager holds it. Every member is optional and at least one is present; " +
-      "ssEnd carries ssStart.",
-  );
-
-/**
- * What the producer already resolved for the timer — the one group with a single audience.
- *
- * In a `Linked` room the Timer manager runs the Resolved tier itself, walking the per-(phase,
- * prop) ladder over the schedule and the library. A `SelfContained` producer ran it upstream, so
- * these are inline values rather than refs — and **refs are not valid anywhere in this group**,
- * including a preset that would have carried `load`.
- *
- * **Only the Resolved tier moves.** The **Runtime** tier stays the Timer manager's in both
- * dialects, because only it is time-dependent: the cue and hint members are still symbolic, and
- * the timer reduces them against live signals and the clock at phase load
- * (mtngtools/mtng-dotnet-mono#382). `minutes` and `label` are already concrete — for them the
- * Resolved tier left nothing to reduce (mtngtools/mtng-dotnet-mono#517).
- *
- * The members arrive independently: a presentation with no cues authored is ordinary, hints are
- * rarer still, a producer saying nothing about `load` leaves the Timer manager's own rungs —
- * host `phaseLoading`, then the `ignore` floor — to answer, and one saying nothing about
- * `minutes` or `label` leaves today's behavior standing.
- */
-export const timerGroup = z
-  .strictObject({
-    minutes: z
-      .number()
-      .nonnegative()
-      .optional()
-      .describe(
-        "The phase's RESOLVED CONCRETE duration in minutes — Resolved-tier output like the rest " +
-          "of the group, fractions allowed. Slots in as the phase's own calculated minutes: the " +
-          "Timer manager's allocation basis, and the denominator a percent floor or cap " +
-          "measures against. An authored, qualifying 'remaining' hint still wins the basis, " +
-          "exactly as in Linked — this member rides below the hint machinery, not above it. " +
-          "0 is an authored no-time. Absent keeps today's behavior — basis 0 unless a " +
-          "remaining hint switches it — no new absence meaning.",
-      ),
-    label: z
-      .string()
-      .min(1)
-      .optional()
-      .describe(
-        "The phase's display name as resolved by the producer — what the timer broadcasts as " +
-          "the phase's name, feeding the top-level 'label' the timer's own events carry. " +
-          "Absent, the Timer manager's built-in phase name stands.",
-      ),
-    phaseCues: z
-      .array(phaseCue)
-      .optional()
-      .describe(
-        "The phase's cue set as AUTHORED, in phaseCue's symbolic form — refs already " +
-          "dereferenced and any preset applied, but thresholds not reduced. The Timer manager " +
-          "reduces them to concrete clock values at phase load, because a percent threshold " +
-          "measures against a starting timer value that is not fixed until the phase starts. " +
-          "Deliberately NOT the reduced timerCue the timer broadcasts on timer.state-changed.",
-      ),
-    timerHints: z
-      .array(timerHint)
-      .optional()
-      .describe(
-        "The resolved hint set for the phase, in authored order — later qualifying entries win " +
-          "over earlier ones for the same bound.",
-      ),
-    load: load.optional(),
-  })
-  .check((ctx) => {
-    const { minutes, label, phaseCues, timerHints, load: loadValue } = ctx.value;
-
-    if (
-      minutes === undefined &&
-      label === undefined &&
-      phaseCues === undefined &&
-      timerHints === undefined &&
-      loadValue === undefined
-    ) {
-      ctx.issues.push({
-        code: "custom",
-        input: ctx.value,
-        path: [],
-        message: "an empty timer group says what absence says — omit it",
-      });
-    }
-  })
-  .describe(
-    "SelfContained only: what the producer ran the Resolved tier over for the timer — the " +
-      "phase's concrete minutes and display label, its authored cue set, its hint set, and its " +
-      "load directive, inline and ref-free. Timer manager only. Cues and hints stay symbolic — " +
-      "the timer runs the Runtime tier over them in both dialects. Absent in a Linked room, " +
-      "where the Timer manager runs the Resolved tier too. Every member is optional and at " +
-      "least one is present.",
+    "The session containing the block: its id, its title for displays, and its scheduled " +
+      "window. Every member is optional and at least one is present; ssEnd carries ssStart. A " +
+      "producer that does not model sessions omits the group.",
   );
 
 /**
@@ -239,9 +120,9 @@ export const presentationFile = z
       .min(1)
       .describe(
         "Opaque id of the presentation instance — the machine or process with the file open. " +
-          "MATCHED BYTE-WISE, NEVER PARSED, like presentationId, and loose on purpose: it exists " +
-          "so a producer can reconcile with itself, not so anything routes on it. It is the " +
-          "files array's uniqueness key.",
+          "MATCHED BYTE-WISE, NEVER PARSED, like prId, and loose on purpose: it exists so a " +
+          "producer can reconcile with itself, not so anything routes on it. It is the files " +
+          "array's uniqueness key.",
       ),
     path: z
       .strictObject({
@@ -250,11 +131,11 @@ export const presentationFile = z
           .min(1)
           .optional()
           .describe("The file's path relative to the producer's own presentation root."),
-        presentationSubDirectory: z
+        prSubDirectory: z
           .string()
           .min(1)
           .optional()
-          .describe("The sub-directory the file sits in, below that root."),
+          .describe("The sub-directory the presentation's file sits in, below that root."),
         fullPath: z
           .string()
           .min(1)
@@ -262,13 +143,9 @@ export const presentationFile = z
           .describe("The file's absolute path on the instance's own filesystem."),
       })
       .check((ctx) => {
-        const { partialPath, presentationSubDirectory, fullPath } = ctx.value;
+        const { partialPath, prSubDirectory, fullPath } = ctx.value;
 
-        if (
-          partialPath === undefined &&
-          presentationSubDirectory === undefined &&
-          fullPath === undefined
-        ) {
+        if (partialPath === undefined && prSubDirectory === undefined && fullPath === undefined) {
           ctx.issues.push({
             code: "custom",
             input: ctx.value,
@@ -292,9 +169,13 @@ export const presentationFile = z
   );
 
 /**
- * The four groups, spread into a message so the message's own members lead and the dialect's
- * additions follow:
- * `z.strictObject({ ...presentationEnvelope(...), ...body, ...presentationContext() })`.
+ * The groups both domains carry, spread into a message so the message's own members lead and
+ * the context follows:
+ * `z.strictObject({ ...timerEnvelope(...), ...body, ...presentationContext() })`.
+ *
+ * `session` and `files` only. The `presentation` group is deliberately not here — it rides the
+ * two presentation-domain messages that spell it out, and never the timer's events
+ * (see {@link presentationGroup}).
  *
  * A function rather than a plain object only to read the way the two envelopes do at the same
  * call sites; Zod schemas are immutable, so sharing them across messages would be safe either
@@ -305,19 +186,17 @@ export const presentationFile = z
  * description here would silently be the only one reaching C# — and the invariants would not.
  */
 export const presentationContext = () => ({
-  block: blockGroup.optional(),
   session: sessionGroup.optional(),
-  timer: timerGroup.optional(),
   files: z
     .array(presentationFile)
     .min(1)
     .describe(
-      "SelfContained only: the presentation computers with a file open for this presentation, " +
-        "one entry each. Absent in a Linked room. instanceId APPEARS ONCE ACROSS THE ARRAY — a " +
-        "further report from an instance already present REPLACES that instance's entry rather " +
-        "than adding a second one. Only the files repeat: the room is in one presentation, and " +
-        "these machines have files open for it. An empty array is not a state — a room with " +
-        "nothing open omits the member.",
+      "The presentation computers with a file open for this presentation, one entry each. " +
+        "instanceId APPEARS ONCE ACROSS THE ARRAY — a further report from an instance already " +
+        "present REPLACES that instance's entry rather than adding a second one. Only the files " +
+        "repeat: the room is in one presentation, and these machines have files open for it. An " +
+        "empty array is not a state — a room with nothing open omits the member, as does a " +
+        "producer that publishes no paths.",
     )
     .optional(),
 });
