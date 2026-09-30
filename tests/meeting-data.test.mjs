@@ -128,6 +128,15 @@ test("calculated entry: refs are legal, alone or beside the inline array", () =>
   assertRejects(calculatedPhase, { minutes: 1, source: "concrete", label: "" }, "label");
 });
 
+test("calculated entry: a floor or cap hint carries value, every other kind carries none", () => {
+  const entry = (timerHints) => ({ minutes: 1, source: "concrete", timerHints });
+  assertRejects(calculatedPhase, entry([{ kind: "floor" }]), "timerHints.0.value");
+  assertRejects(calculatedPhase, entry([{ kind: "cap", unit: "percent" }]), "timerHints.0.value");
+  assertRejects(calculatedPhase, entry([{ kind: "remaining", value: 1 }]), "timerHints.0.value");
+  assertRejects(calculatedPhase, entry([{ kind: "protectQA", value: 0 }]), "timerHints.0.value");
+  assertAccepts(calculatedPhase, entry([{ kind: "protectQA" }, { kind: "cap", value: 90, unit: "percent" }, { kind: "remaining", whenPrLateBy: 5 }]));
+});
+
 test("calculated entry: strictness survives the extend — the reduced 'cues' spelling is rejected", () => {
   assertRejects(calculatedPhase, { minutes: 1, source: "concrete", cues: [{ label: "warn", atDuration: 60 }] }, "");
 });

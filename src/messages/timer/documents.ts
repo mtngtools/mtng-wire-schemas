@@ -9,9 +9,10 @@ import { phaseBody, phaseCue, phaseKey, timerHint } from "../../shared/timing.ts
  * carries no envelope — no `type`, `domain`, `kind`, `ts` — because nothing routes it: a
  * configuration port reads it out of a configuration section through the mirror's own serializer
  * options (mtng-dotnet-mono `Core.Configuration`'s `ConfigurationJson.Read<T>(section,
- * WireJson.Options)`), and a host writes it in `appsettings.json` or its environment. The
- * window state document was the precedent, hosted on a message; this is the first that stands
- * alone (ADR-0033; Core.Wire spec §Documents and fixtures ride the same pipeline).
+ * WireJson.Options)`), and a host writes it in `appsettings.json` or its environment.
+ * `WindowDesiredStateChangedPresets` — the presets member of the window state document — was the
+ * precedent, hosted on a message; this is the first that stands alone (ADR-0033; Core.Wire spec
+ * §Documents and fixtures ride the same pipeline).
  */
 
 /**
@@ -35,6 +36,8 @@ const namedSets = <TItem extends z.ZodType>(item: TItem, what: string) =>
           "names. Keys are scoped to this phase's namespace. A set holds " +
           `${what}s, never refs.`,
       ),
+    // TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
+    // a `default` naming no key in `sets` is accepted and left to the resolver's fallthrough, over a `.check()` that it names one — a rejected document reverts the whole Timer:Presets level (ADR-0030), where a dangling key is one prop's fallthrough with a resolverNotes line, the posture every other ref on this wire has
     default: z
       .string()
       .min(1)
@@ -43,7 +46,8 @@ const namedSets = <TItem extends z.ZodType>(item: TItem, what: string) =>
         "Names the key in sets that applies when nothing more specific does — the " +
           "library-default rung of the ladder. Absent means no default. A namespace-level key " +
           "rather than a per-set flag, because the map is unordered and two flagged sets would " +
-          "have no portable tiebreak.",
+          "have no portable tiebreak. A default naming no key in sets is a dangling ref: it " +
+          "contributes nothing, with a resolverNotes line — never a rejected document.",
       ),
   });
 
@@ -87,8 +91,9 @@ export const TimerPresets = z
               .meta({ title: "PhaseBody" })
               .describe(
                 "A preset's body for one phase: label, load, phaseCues, timerHints, and the refs " +
-                  "cuesRef / timerHintsRef into this level's named sets — a preset body may carry " +
-                  "refs, unlike upstream's. No minutes: a preset never changes how long a phase is.",
+                  "cuesRef / timerHintsRef into the named sets — resolved against the levels the " +
+                  "room has, as every ref is; a preset body may carry refs, unlike upstream's. No " +
+                  "minutes: a preset never changes how long a phase is.",
               ),
           )
           .describe(

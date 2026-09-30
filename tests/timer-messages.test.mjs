@@ -17,11 +17,21 @@ for (const [name, schema, sample] of [
     assertRejects(schema, sample({ prId: "", phase: "talk" }), "prId");
   });
 
-  test(`${name}: carries session and files, in either dialect`, () => {
+  test(`${name}: accepts session and files — the groups a SelfContained room's manager adds`, () => {
     assertAccepts(schema, sample({ prId: "pr-1", phase: "qa", session: { ssId: "ss-1" }, files: [fileSample()] }));
     assertAccepts(schema, sample({ session: { ssTitle: "Morning", ssStart: ts } }));
     assertRejects(schema, sample({ session: {} }), "session");
     assertRejects(schema, sample({ files: [fileSample("a"), fileSample("a")] }), "files");
+  });
+
+  test(`${name}: the clock is a tagged record — running carries endsAt, paused carries duration, cleared neither`, () => {
+    if (schema !== TimerStateChanged) {
+      return;
+    }
+    assertRejects(schema, sample({ clock: { lifecycle: "running" } }), "clock.endsAt");
+    assertRejects(schema, sample({ clock: { lifecycle: "paused" } }), "clock.duration");
+    assertAccepts(schema, sample({ clock: { lifecycle: "paused", duration: 30 } }));
+    assertAccepts(schema, sample({ clock: { lifecycle: "cleared" } }));
   });
 
   test(`${name}: never the presentation group, and never the retired timer or block members`, () => {

@@ -138,7 +138,7 @@
         "label"
       ],
       "additionalProperties": false,
-      "description": "A cue was crossed. A crossing is not a transition, so without this nothing would tell a basic display that a cue fired between two anchors — it is the 'furthestCue advanced' push. Carries the key of what it times — prId and phase, together or not at all — in either dialect, and the session and files groups when the producer holds them, for the reason state-changed does."
+      "description": "A cue was crossed. A crossing is not a transition, so without this nothing would tell a basic display that a cue fired between two anchors — it is the 'furthestCue advanced' push. Carries the key of what it times — prId and phase, together or not at all — in either dialect, and in a SelfContained room the session and files groups besides, for the reason state-changed does."
     }
   }
 }

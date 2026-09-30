@@ -11,7 +11,8 @@ import { presentation } from "./meeting-data.ts";
  * carried on the same message: the presentation itself, the session containing it, and the
  * machines with a file open for it. `presentation.state-changed` and `presentation.enter` carry
  * all three (`enter` with a singular `file`); `timer.state-changed` and `timer.cue-fired` carry
- * `session` and `files` only, plus the key of what they time.
+ * the key of what they time in both dialects, and `session` and `files` in a `SelfContained`
+ * room — never the `presentation` group.
  *
  * **A producer may always send a group, whatever the room's dialect.** `DataLoadMode` names the
  * source the Timer manager reads — its schedule or the pointer — not what may arrive: a `Linked`

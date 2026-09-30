@@ -1,6 +1,6 @@
 // Shared loaders and samples for the suite.
 //
-// The suite runs under plain node — `node --test tests/` — with no test dependency: node:test
+// The suite runs under plain node — `node --test "tests/**/*.test.mjs"` — with no test dependency: node:test
 // and node:assert are built in, and node strips the TypeScript types on import, so the authored
 // src/*.ts is what executes, exactly as scripts/generate.mjs runs it. The test files are .mjs
 // because nothing typechecks them (tsconfig includes src/ only); the schemas they exercise are

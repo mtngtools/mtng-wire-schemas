@@ -363,9 +363,9 @@ export const presentation = z
       .array(z.string().min(1))
       .describe(
         "The presentation's moderators as ids of speakers the consumer can reach — on this " +
-          "message's prSpeakers, or in its own cache. Not with prModerators: upstream's " +
-          "'SP[] | string[]' is two members here because an untagged union does not survive the " +
-          "C# mirror. [] allowed.",
+          "message's prSpeakers, or in its own cache. Not with prModerators: upstream allows " +
+          "'SP[] | string[]' on its resolved shape, and an untagged union does not survive the " +
+          "C# mirror, so the id form is its own member. [] allowed.",
       )
       .optional(),
   })

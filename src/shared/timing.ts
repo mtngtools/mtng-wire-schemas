@@ -132,6 +132,8 @@ export const phaseCue = z
           "when the starting value is 0; an absolute cue is always kept.",
       ),
   })
+  // TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
+  // the titles `PhaseCue` here and `TimerHint` on timerHint below — the mirror's class names where a record reaches them (`TimerPresetsPhaseCue`, `TimerPresetsTimerHint`) — over upstream's `PresentationPhaseCue` and .NET's `PhaseTimerHint`; each is the wire's own name for the shape, PascalCased, as its property-named classes (`…PhaseCues`, `…TimerHints`) already spell it
   .meta({ title: "PhaseCue" })
   .describe(
     "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete " +
@@ -308,7 +310,8 @@ export const phaseBody = z.strictObject({
     .optional()
     .describe(
       "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). " +
-        "Absent, the preset's stands, else the built-in name. What the timer broadcasts as the " +
+        "Resolved per phase down the ladder — the entry's, then the preset's, then the built-in " +
+        "name — so absent here defers to the next rung. What the timer broadcasts as the " +
         "top-level 'label' its own events carry.",
     ),
   load: load.optional(),

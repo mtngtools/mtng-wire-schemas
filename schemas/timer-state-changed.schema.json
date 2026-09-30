@@ -236,7 +236,7 @@
         "furthestCueFamily"
       ],
       "additionalProperties": false,
-      "description": "A full, self-contained snapshot of one timer instance, broadcast per transition rather than per second: clients interpolate between anchors. The same shape answers the current-state RPC, so a snapshot and a delta are applied by the same code. Carries the key of what it times — prId and phase, together or not at all — in either dialect, and the presentation domain's session and files groups when the producer holds them; never the presentation group."
+      "description": "A full, self-contained snapshot of one timer instance, broadcast per transition rather than per second: clients interpolate between anchors. The same shape answers the current-state RPC, so a snapshot and a delta are applied by the same code. Carries the key of what it times — prId and phase, together or not at all — in either dialect, and in a SelfContained room the presentation domain's session and files groups besides; never the presentation group."
     }
   }
 }

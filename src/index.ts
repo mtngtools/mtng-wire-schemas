@@ -100,8 +100,10 @@ export { PresentationCurrentState } from "./messages/presentation/rpc.ts";
 //     unchanged: a commands-dual/events-single split would let a console send goto-next-slide
 //     and not read the echo telling it the move happened.
 //
-// Nothing here strains the mirror — every member is a scalar, a closed enum, or the same
-// presentationFile the pointer already ships.
+// Nothing here strains the mirror: enter's groups — the presentation entity, the session, the
+// file — are the same Zod objects the pointer already ships, so they mirror as the same
+// structures under enter's own name (PresentationEnterPresentation beside
+// PresentationStateChangedPresentation), the per-message duplication the Core.Wire spec accepts.
 export {
   PresentationEnter,
   PresentationExit,

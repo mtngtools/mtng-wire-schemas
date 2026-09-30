@@ -9,9 +9,10 @@ import { timerClock, timerCueFamily, timerEnvelope } from "./common.ts";
 /**
  * Timer events — exchange `mtng.events`, routing key `timer.<name>.<target>`.
  *
- * **Both events carry the key of what they time — `prId` and `phase` — in both dialects, and the
- * presentation domain's `session` and `files` groups besides** (mtngtools/mtng-dotnet-mono#378,
- * #720; ADR-0033). Before the key, neither event named its presentation or its phase — `label` is
+ * **Both events carry the key of what they time — `prId` and `phase` — in both dialects, and in a
+ * `SelfContained` room the presentation domain's `session` and `files` groups besides**
+ * (mtngtools/mtng-dotnet-mono#378, #720; ADR-0033). Before the key, neither event named its
+ * presentation or its phase — `label` is
  * a display string — so a consumer holding only timer events could not say what the clock
  * belonged to: could not join a `Linked` event against the Meeting data manager, nor a
  * `SelfContained` one against a store keyed by `prId`. Two scalars fix that in both rooms.
@@ -21,6 +22,13 @@ import { timerClock, timerCueFamily, timerEnvelope } from "./common.ts";
  * and presentation state is room-singular, so the current `presentation.state-changed` *is* the
  * join, no id needed. Carrying the group would also put the authored `phaseCues` beside the
  * reduced `cues` on one message, the same-name collision `phaseCues` exists to avoid.
+ *
+ * **Why `session` and `files` ride only in `SelfContained`.** A `SelfContained` room has no
+ * Meeting data manager, so session context is unreachable unless it rides along; in a `Linked`
+ * room the join target exists, and fattening the highest-frequency message on the bus with a
+ * second copy of its data is the single-source rule's exact prohibition. The schema cannot see
+ * the dialect — the rule is the Timer manager's, the one producer of these events — so the
+ * groups are optional here and the manager omits them in `Linked`.
  *
  * **Both events, not only `cue-fired`.** Carrying context on the occasional message and leaving
  * the frequent `state-changed` thin would leave a display watching only `state-changed` with
@@ -162,8 +170,8 @@ export const TimerStateChanged = z
       "than per second: clients interpolate between anchors. The same shape answers the " +
       "current-state RPC, so a snapshot and a delta are applied by the same code. Carries the " +
       "key of what it times — prId and phase, together or not at all — in either dialect, and " +
-      "the presentation domain's session and files groups when the producer holds them; never " +
-      "the presentation group.",
+      "in a SelfContained room the presentation domain's session and files groups besides; " +
+      "never the presentation group.",
   );
 
 export type TimerStateChanged = z.infer<typeof TimerStateChanged>;
@@ -204,8 +212,8 @@ export const TimerCueFired = z
     "A cue was crossed. A crossing is not a transition, so without this nothing would tell a " +
       "basic display that a cue fired between two anchors — it is the 'furthestCue advanced' " +
       "push. Carries the key of what it times — prId and phase, together or not at all — in " +
-      "either dialect, and the session and files groups when the producer holds them, for the " +
-      "reason state-changed does.",
+      "either dialect, and in a SelfContained room the session and files groups besides, for " +
+      "the reason state-changed does.",
   );
 
 export type TimerCueFired = z.infer<typeof TimerCueFired>;

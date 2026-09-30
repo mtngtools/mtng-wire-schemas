@@ -25,7 +25,7 @@
               "type": "object",
               "properties": {
                 "label": {
-                  "description": "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). Absent, the preset's stands, else the built-in name. What the timer broadcasts as the top-level 'label' its own events carry.",
+                  "description": "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). Resolved per phase down the ladder — the entry's, then the preset's, then the built-in name — so absent here defers to the next rung. What the timer broadcasts as the top-level 'label' its own events carry.",
                   "type": "string",
                   "minLength": 1
                 },
@@ -146,7 +146,7 @@
               },
               "additionalProperties": false,
               "title": "PhaseBody",
-              "description": "A preset's body for one phase: label, load, phaseCues, timerHints, and the refs cuesRef / timerHintsRef into this level's named sets — a preset body may carry refs, unlike upstream's. No minutes: a preset never changes how long a phase is."
+              "description": "A preset's body for one phase: label, load, phaseCues, timerHints, and the refs cuesRef / timerHintsRef into the named sets — resolved against the levels the room has, as every ref is; a preset body may carry refs, unlike upstream's. No minutes: a preset never changes how long a phase is."
             },
             "description": "One preset — a 'quick copy of everything': its body per phase, keyed intro / talk / qa. A phase the preset is silent on is absent."
           },
@@ -214,7 +214,7 @@
                 "description": "Key → one phase's cue array, the set a cuesRef names. Keys are scoped to this phase's namespace. A set holds cues, never refs."
               },
               "default": {
-                "description": "Names the key in sets that applies when nothing more specific does — the library-default rung of the ladder. Absent means no default. A namespace-level key rather than a per-set flag, because the map is unordered and two flagged sets would have no portable tiebreak.",
+                "description": "Names the key in sets that applies when nothing more specific does — the library-default rung of the ladder. Absent means no default. A namespace-level key rather than a per-set flag, because the map is unordered and two flagged sets would have no portable tiebreak. A default naming no key in sets is a dangling ref: it contributes nothing, with a resolverNotes line — never a rejected document.",
                 "type": "string",
                 "minLength": 1
               }
@@ -301,7 +301,7 @@
                 "description": "Key → one phase's hint array, the set a timerHintsRef names. Keys are scoped to this phase's namespace. A set holds hints, never refs."
               },
               "default": {
-                "description": "Names the key in sets that applies when nothing more specific does — the library-default rung of the ladder. Absent means no default. A namespace-level key rather than a per-set flag, because the map is unordered and two flagged sets would have no portable tiebreak.",
+                "description": "Names the key in sets that applies when nothing more specific does — the library-default rung of the ladder. Absent means no default. A namespace-level key rather than a per-set flag, because the map is unordered and two flagged sets would have no portable tiebreak. A default naming no key in sets is a dangling ref: it contributes nothing, with a resolverNotes line — never a rejected document.",
                 "type": "string",
                 "minLength": 1
               }

@@ -58,8 +58,8 @@ mtng-wire-schemas/
   fixtures/                  # conformance corpora: { name, wire, expected } cases both
     meeting-data/            #   consumers run — the wire -> reliable PresentationFull fill
   scripts/generate.mjs       # the emitter: src/messages/ (Zod) -> schemas/ (JSON Schema)
-  tests/                     # the suite: every .check(), the emitted schemas as the mirror
-                             #   reads them — plain node, `npm test`
+  tests/                     # the suite: the presentation and timer sets' .check()s, the
+                             #   fixtures, the emitted schemas as the mirror reads them — `npm test`
   package.json               # Zod SoT + `generate` / `typecheck` / `test` / `check` scripts
 ```
 
@@ -107,8 +107,9 @@ somewhere other than the bus: a configuration section, a file. `TimerPresets` in
 under the `Timer:Presets` configuration key, the room's own level of the named-set and preset
 library, authored in the same vocabulary a producer puts on the wire so a host spells `label`,
 `phaseCues`, `timerHints`, `load`, `cuesRef` and `timerHintsRef` one way everywhere
-(mtng-dotnet-mono ADR-0033, `Core.TimerPresets` spec). The window state document was the
-precedent, hosted on a message; a document stands alone.
+(mtng-dotnet-mono ADR-0033, `Core.TimerPresets` spec). `WindowDesiredStateChangedPresets` — the
+presets member of the window state document — was the precedent, hosted on a message; a document
+stands alone.
 
 Authored like a message in every other way — `.describe()`, `strictObject`, tagged records, the
 per-phase record rule below — and exported from the barrel on the same terms: a document reaches
@@ -211,11 +212,13 @@ Generated output in `schemas/` is **committed**, and each consumer guards it wit
 
 The suite under [`tests/`](tests/) runs on node's built-in runner with no test dependency — node
 strips the TypeScript types on import, so the authored `src/*.ts` is what the tests exercise, as
-it is what the emitter runs. Two kinds of test live there: every invariant a `.check()` enforces
-(the mirror carries structure only, so this is the one place the invariants are proven), and the
-emitted `schemas/` read the way NJsonSchema will read them — no `oneOf`, no nullable, every
-object closed but the named bags, and never two differently-shaped objects under one mirror name
-in one message. The fixture sets under `fixtures/` are validated here too.
+it is what the emitter runs. Three kinds of test live there: the invariants the `.check()`s
+enforce — the presentation and timer sets' today; the window domain's are not yet covered — (the
+mirror carries structure only, so this is the one place an invariant is proven); the emitted
+`schemas/` read the way NJsonSchema will read them — no `oneOf`, no nullable, every object closed
+but the named bags, and never two differently-shaped objects under one mirror name in one
+message; and the fixture sets under `fixtures/`, each case's `wire` validated against its schema
+and each `expected` held to the set's rule.
 
 The emitter is Zod v4's **native `z.toJSONSchema()`** (draft-07), not a third-party generator:
 it is the only one that carries Zod's constraints through to the emitted schema, and from there
