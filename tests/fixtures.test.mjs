@@ -25,8 +25,6 @@ const cases = await Promise.all(
  * other passes as an id); `spOrder`/`spOrderKey` fold into one `spOrder`; present datetimes are
  * the wire's instant in unix milliseconds; everything else passes through, absent staying absent.
  */
-// TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// a reference fill in this suite, deep-equal against every `expected` half, over seam checks only (fills, folds, instants) — the seam checks let a typo anywhere else in `expected` ship as the two-consumer contract; the reference fill is thirty lines, and its reading is held to the README's table, not the other way round
 const referenceFill = (wire) => {
   const filled = [];
   const instant = (iso) => Date.parse(iso);

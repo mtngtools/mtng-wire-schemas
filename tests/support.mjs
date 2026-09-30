@@ -5,9 +5,6 @@
 // src/*.ts is what executes, exactly as scripts/generate.mjs runs it. The test files are .mjs
 // because nothing typechecks them (tsconfig includes src/ only); the schemas they exercise are
 // fully typed either way.
-//
-// TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// node's built-in runner over .mjs files outside src/, zero new dependencies, over a vitest or @types/node devDependency with co-located .test.ts under tsc — the repo is deliberately self-contained, and the schemas under test stay fully typed either way; the cost is that the test files themselves are not typechecked
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 

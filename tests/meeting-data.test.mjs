@@ -125,7 +125,12 @@ test("calculated entry: refs are legal, alone or beside the inline array", () =>
   assertAccepts(calculatedPhase, { minutes: 1, source: "concrete", cuesRef: "standard", timerHintsRef: "qa-strict" });
   assertAccepts(calculatedPhase, { minutes: 1, source: "concrete", cuesRef: "standard", phaseCues: [{ label: "warn", at: 1 }] });
   assertRejects(calculatedPhase, { minutes: 1, source: "concrete", cuesRef: "" }, "cuesRef");
-  assertRejects(calculatedPhase, { minutes: 1, source: "concrete", label: "" }, "label");
+  assertRejects(calculatedPhase, { minutes: 1, source: "concrete", timerHintsRef: "" }, "timerHintsRef");
+});
+
+test("calculated entry: an explicit empty label is allowed — it is how a producer shows no phase name", () => {
+  assertAccepts(calculatedPhase, { minutes: 1, source: "concrete", label: "" });
+  assertAccepts(calculatedPhase, { minutes: 1, source: "concrete", label: "Lightning" });
 });
 
 test("calculated entry: a floor or cap hint carries value, every other kind carries none", () => {

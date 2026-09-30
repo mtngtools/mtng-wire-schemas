@@ -49,6 +49,12 @@ test("a preset body may carry refs, alone or beside an inline array", () => {
   assertRejects(TimerPresets, { phasePresets: { p: { talk: { cuesRef: "" } } } }, "phasePresets.p.talk.cuesRef");
 });
 
+test("a preset body's label may be '' — explicitly no phase name — where its keys may not be empty", () => {
+  assertAccepts(TimerPresets, { phasePresets: { p: { intro: { label: "" } } } });
+  assertRejects(TimerPresets, { phasePresets: { p: { intro: { timerHintsRef: "" } } } }, "phasePresets.p.intro.timerHintsRef");
+  assertRejects(TimerPresets, { phasePresets: { "": { intro: { label: "x" } } } }, "phasePresets.");
+});
+
 test("a preset body carries no minutes — durations stay schedule-driven", () => {
   assertRejects(TimerPresets, { phasePresets: { p: { talk: { minutes: 5 } } } }, "phasePresets.p.talk");
 });

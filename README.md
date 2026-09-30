@@ -125,8 +125,6 @@ fails. [`fixtures/meeting-data/`](fixtures/meeting-data/) is the first set shipp
 reliable `PresentationFull` fill (`Core.MeetingData` in .NET, `mtng-mono`'s helper in TS), and it
 fixes the conventions a later set follows.
 
-<!-- TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM -->
-<!-- the fixture file conventions below — `expected` as the flat reliable view carrying `filled`, `{ "rejected": true }` for a wire the schema refuses, `null` for the group absent, unix milliseconds for every datetime in `expected`, and dotted wire paths in `filled` — over nesting the view under `expected.presentation`, a top-level `rejects` flag, and ISO strings with a sentinel; the tickets fixed `{ name, wire, expected }` with `expected.filled` and the `0` fill, and the rest is what makes one file readable by three implementations -->
 Every case is `{ "name", "wire", "expected" }`, `name` equal to the file's stem:
 
 - **`wire`** is the input exactly as the schema admits it — for `meeting-data`, the `presentation`

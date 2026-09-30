@@ -155,9 +155,8 @@
                     "type": "object",
                     "properties": {
                       "label": {
-                        "description": "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). Resolved per phase down the ladder — the entry's, then the preset's, then the built-in name — so absent here defers to the next rung. What the timer broadcasts as the top-level 'label' its own events carry.",
-                        "type": "string",
-                        "minLength": 1
+                        "description": "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). Resolved per phase down the ladder — the entry's, then the preset's, then the built-in name — so absent here defers to the next rung. '' is allowed and is explicit: it wins the ladder like any present value, so the timer broadcasts an empty label — the one way to show no phase name. What the timer broadcasts as the top-level 'label' its own events carry.",
+                        "type": "string"
                       },
                       "load": {
                         "type": "string",

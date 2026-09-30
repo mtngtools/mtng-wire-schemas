@@ -190,8 +190,6 @@ export const calculatedPhase = phaseBody
       });
     }
   })
-  // TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-  // `CalculatedPhase` over `CalculatedEntry` — the title becomes the mirror's class name (`…CalculatedPhase`) because the record's value has no property to be named after; it is the name Core.PresentationTiming already gives this concept, where the specs' prose says "calculated entry"
   .meta({ title: "CalculatedPhase" })
   .describe(
     "One phase at the Calculated tier: the phase body (label, load, phaseCues, timerHints, " +

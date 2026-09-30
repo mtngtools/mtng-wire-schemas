@@ -44,8 +44,6 @@ import { timerClock, timerCueFamily, timerEnvelope } from "./common.ts";
  * to name, and a phase without a presentation is meaningless — so both ride or neither does,
  * enforced by {@link checkPresentationKey} on each message.
  */
-// TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// prId and phase optional and paired (both or neither) over required on every timer event — the spec fixes that both events carry the key in both dialects and says nothing about a timer with no presentation, and a cleared or operator-driven timer has none to name
 const presentationKey = () => ({
   prId: z
     .string()

@@ -36,8 +36,6 @@ const namedSets = <TItem extends z.ZodType>(item: TItem, what: string) =>
           "names. Keys are scoped to this phase's namespace. A set holds " +
           `${what}s, never refs.`,
       ),
-    // TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-    // a `default` naming no key in `sets` is accepted and left to the resolver's fallthrough, over a `.check()` that it names one — a rejected document reverts the whole Timer:Presets level (ADR-0030), where a dangling key is one prop's fallthrough with a resolverNotes line, the posture every other ref on this wire has
     default: z
       .string()
       .min(1)
@@ -86,8 +84,6 @@ export const TimerPresets = z
           .partialRecord(
             phaseKey,
             phaseBody
-              // TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-              // titles `PhaseBody`, `NamedCueSets`, `NamedHintSets` over `PhasePreset`, `CueSets`, `HintSets` — each becomes the mirror's class name (`TimerPresetsPhaseBody`, …) because a record's value has no property to be named after; `PhaseBody` is the specs' own noun for the six-prop body and `Named*Sets` reads as the .NET `NamedSets<T>` it maps to, per item kind
               .meta({ title: "PhaseBody" })
               .describe(
                 "A preset's body for one phase: label, load, phaseCues, timerHints, and the refs " +

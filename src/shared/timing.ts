@@ -132,8 +132,6 @@ export const phaseCue = z
           "when the starting value is 0; an absolute cue is always kept.",
       ),
   })
-  // TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-  // the titles `PhaseCue` here and `TimerHint` on timerHint below — the mirror's class names where a record reaches them (`TimerPresetsPhaseCue`, `TimerPresetsTimerHint`) — over upstream's `PresentationPhaseCue` and .NET's `PhaseTimerHint`; each is the wire's own name for the shape, PascalCased, as its property-named classes (`…PhaseCues`, `…TimerHints`) already spell it
   .meta({ title: "PhaseCue" })
   .describe(
     "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete " +
@@ -284,8 +282,6 @@ export const load = z
  * Verified against the real generator while authoring (mtngtools/mtng-dotnet-mono#733). The
  * emitted schema closes the keys with `propertyNames`, so the object is as strict as the literal.
  */
-// TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// z.partialRecord(phaseKey, …) for every per-phase container (the group's prPhasesCalculated.phases, a TimerPresets preset, cueSets, hintSets) over the literal z.strictObject({ intro, talk, qa }) the specs spell — identical JSON and TS type; the literal form emits three same-shaped classes and enums per container plus orphan suffixed enums, and merges differently-shaped Intros in the document (verified against NJsonSchema 11.6.1); #733's third criterion is read as "closed", which propertyNames enforces, rather than "additionalProperties absent"
 export const phaseKey = z.enum(["intro", "talk", "qa"]);
 
 /**
@@ -298,21 +294,21 @@ export const phaseKey = z.enum(["intro", "talk", "qa"]);
  * when both are set — upstream's rule (ADR-0033). No `minutes`: a body is behaviour, never
  * duration.
  *
- * Every member is optional, and the optional strings are `.min(1)`: an empty label or an empty
- * key would be a second way of saying nothing, beside absence.
+ * Every member is optional. The keys are `.min(1)` — an empty key would be a second way of
+ * saying nothing, beside absence — where `label` admits `""`: an explicit empty name wins the
+ * ladder like any present value, and is how a producer shows no phase name at all.
  */
-// TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// `.min(1)` on the optional labels and library keys (label, cuesRef, timerHintsRef here; prPhasesPreset and a named set's `default` at their sites) over plain `z.string()` as upstream types them — an empty label or key is a second absence idiom, and this wire already spells its optional titles and ids `.min(1)`
 export const phaseBody = z.strictObject({
   label: z
     .string()
-    .min(1)
     .optional()
     .describe(
       "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). " +
         "Resolved per phase down the ladder — the entry's, then the preset's, then the built-in " +
-        "name — so absent here defers to the next rung. What the timer broadcasts as the " +
-        "top-level 'label' its own events carry.",
+        "name — so absent here defers to the next rung. '' is allowed and is explicit: it wins " +
+        "the ladder like any present value, so the timer broadcasts an empty label — the one " +
+        "way to show no phase name. What the timer broadcasts as the top-level 'label' its own " +
+        "events carry.",
     ),
   load: load.optional(),
   phaseCues: z
