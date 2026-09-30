@@ -1,0 +1,322 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/TimerPresets",
+  "definitions": {
+    "TimerPresets": {
+      "type": "object",
+      "properties": {
+        "phasePresets": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "enum": [
+                "intro",
+                "talk",
+                "qa"
+              ]
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "description": "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). Resolved per phase down the ladder — the entry's, then the preset's, then the built-in name — so absent here defers to the next rung. '' is allowed and is explicit: it wins the ladder like any present value, so the timer broadcasts an empty label — the one way to show no phase name. What the timer broadcasts as the top-level 'label' its own events carry.",
+                  "type": "string"
+                },
+                "load": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "auto-paused",
+                    "clear",
+                    "ignore",
+                    "next"
+                  ],
+                  "description": "Authored intent for what a timer does when this phase becomes current: 'auto' sets the phase and runs it, 'auto-paused' sets and holds it (a 'remaining'-basis phase runs anyway — it cannot be staged), 'clear' clears the timer, 'ignore' does nothing, and 'next' sets and holds the NEXT phase as a preview. The runtime precedence below this value — the host phaseLoading rung, the timerAutomation kill-switch — is the Timer manager's and is not on the wire."
+                },
+                "phaseCues": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim into the reduced cue the timer broadcasts. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'. Consumer-facing only: it plays no part in the timing calculation. (Upstream spells this field 'kind'.)"
+                      },
+                      "anchor": {
+                        "description": "Which end of the phase 'at' is measured from; absent means 'end'. Load-bearing together with the sign of 'at', never inferred from it: 'end' fires before the end on a positive value and after it on a negative one, 'start' fires after the start on a positive value and before it on a negative one.",
+                        "type": "string",
+                        "enum": [
+                          "start",
+                          "end"
+                        ]
+                      },
+                      "at": {
+                        "type": "number",
+                        "description": "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by atUnits. Unlike upstream's phase-config 'minutes', a negative here is a direction and never an auto-mode sentinel. (A calculated entry's own 'minutes' admits no negative at all — resolution already answered auto.)"
+                      },
+                      "atUnits": {
+                        "description": "The unit of |at|; absent means 'minutes'. 'percent' measures against the phase's STARTING TIMER VALUE — what the timer starts the phase from, after any 'remaining' basis-switch and up-front floor/cap. That is NOT the floor/cap basis, which is the phase's initial calculated minutes. There is no [0,100] clamp: a percent may resolve outside the phase, exactly as a large absolute value can. A percent cue is dropped when the starting value is 0; an absolute cue is always kept.",
+                        "type": "string",
+                        "enum": [
+                          "minutes",
+                          "percent"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "at"
+                    ],
+                    "additionalProperties": false,
+                    "title": "PhaseCue",
+                    "description": "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete clock threshold at phase load, because a percent threshold's denominator is not fixed until the phase starts."
+                  },
+                  "description": "The phase's cue set as AUTHORED, in phaseCue's symbolic form — thresholds not reduced. Inline beats cuesRef when both are set. Deliberately NOT the reduced timerCue the timer broadcasts as 'cues' on timer.state-changed: the authored list and the reduced set never share a spelling, because two shapes under one name merge silently in the C# mirror."
+                },
+                "timerHints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Which hint this is. OPEN VOCABULARY, not an enum: an unrecognised kind is a custom entry to be ignored, never a reason to reject the message. The four kinds this room implements are 'remaining' (switch the basis from the phase's own calculated minutes to block-remaining), 'floor' (a minimum duration), 'cap' (a maximum duration) and 'protectQA' (talk-only, valueless: cap talk at its own calculated minutes so it cannot borrow qa's time)."
+                      },
+                      "unit": {
+                        "description": "The unit of value; absent means 'minutes'. A percent floor/cap is of the phase's initial calculated minutes — the stable, pre-hint duration, not the live 'remaining' basis and not a cue's starting timer value.",
+                        "type": "string",
+                        "enum": [
+                          "minutes",
+                          "percent"
+                        ]
+                      },
+                      "value": {
+                        "description": "The floor/cap magnitude. Present iff kind is 'floor' or 'cap', and absent on every other kind including 'protectQA', which is a valueless cap-producer.",
+                        "type": "number"
+                      },
+                      "whenUnits": {
+                        "description": "The one unit shared by all three when* thresholds below; absent means 'minutes'. A percent here is of the presentation BLOCK (prEnd - prStart), not of the phase. Closed, unlike kind: a new unit is a spec change, not a producer extension. Units cannot be mixed across the three, which is never a real need since all three are block-relative.",
+                        "type": "string",
+                        "enum": [
+                          "minutes",
+                          "percent"
+                        ]
+                      },
+                      "whenOverBy": {
+                        "description": "Cumulative presentation overage, against the scheduled prEnd, required for this entry to qualify.",
+                        "type": "number"
+                      },
+                      "whenPrEarlyBy": {
+                        "description": "How early the block must have started for this entry to qualify.",
+                        "type": "number"
+                      },
+                      "whenPrLateBy": {
+                        "description": "How late the block must have started for this entry to qualify.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "title": "TimerHint",
+                    "description": "One timer hint: how the phase's actual duration behaves under overrun. Evaluated once, at phase load, to set the phase's starting timer value — never re-evaluated thereafter. kind is an open vocabulary so an unrecognised entry degrades to ignored rather than rejecting the message; value is present iff kind is 'floor' or 'cap'."
+                  },
+                  "description": "The phase's hint set, in authored order — later qualifying entries win over earlier ones for the same bound. Inline beats timerHintsRef when both are set."
+                },
+                "cuesRef": {
+                  "description": "The key of a named cue set in the library, used when phaseCues is absent. Resolved per phase against the levels the room has — session, meeting, Timer:Presets — and a dangling key falls through the ladder with a resolverNotes line, never an error.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "timerHintsRef": {
+                  "description": "The key of a named hint set in the library, used when timerHints is absent. Resolved as cuesRef is.",
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false,
+              "title": "PhaseBody",
+              "description": "A preset's body for one phase: label, load, phaseCues, timerHints, and the refs cuesRef / timerHintsRef into the named sets — resolved against the levels the room has, as every ref is; a preset body may carry refs, unlike upstream's. No minutes: a preset never changes how long a phase is."
+            },
+            "description": "One preset — a 'quick copy of everything': its body per phase, keyed intro / talk / qa. A phase the preset is silent on is absent."
+          },
+          "description": "Preset name → the preset, the flat map prPhasesPreset names into. Behaviour and display only; resolved at phase load, never affecting durations. A dangling name falls through as if prPhasesPreset were unset, with a resolverNotes line."
+        },
+        "cueSets": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "enum": [
+              "intro",
+              "talk",
+              "qa"
+            ]
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "sets": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim into the reduced cue the timer broadcasts. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'. Consumer-facing only: it plays no part in the timing calculation. (Upstream spells this field 'kind'.)"
+                      },
+                      "anchor": {
+                        "description": "Which end of the phase 'at' is measured from; absent means 'end'. Load-bearing together with the sign of 'at', never inferred from it: 'end' fires before the end on a positive value and after it on a negative one, 'start' fires after the start on a positive value and before it on a negative one.",
+                        "type": "string",
+                        "enum": [
+                          "start",
+                          "end"
+                        ]
+                      },
+                      "at": {
+                        "type": "number",
+                        "description": "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by atUnits. Unlike upstream's phase-config 'minutes', a negative here is a direction and never an auto-mode sentinel. (A calculated entry's own 'minutes' admits no negative at all — resolution already answered auto.)"
+                      },
+                      "atUnits": {
+                        "description": "The unit of |at|; absent means 'minutes'. 'percent' measures against the phase's STARTING TIMER VALUE — what the timer starts the phase from, after any 'remaining' basis-switch and up-front floor/cap. That is NOT the floor/cap basis, which is the phase's initial calculated minutes. There is no [0,100] clamp: a percent may resolve outside the phase, exactly as a large absolute value can. A percent cue is dropped when the starting value is 0; an absolute cue is always kept.",
+                        "type": "string",
+                        "enum": [
+                          "minutes",
+                          "percent"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "at"
+                    ],
+                    "additionalProperties": false,
+                    "title": "PhaseCue",
+                    "description": "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete clock threshold at phase load, because a percent threshold's denominator is not fixed until the phase starts."
+                  }
+                },
+                "description": "Key → one phase's cue array, the set a cuesRef names. Keys are scoped to this phase's namespace. A set holds cues, never refs."
+              },
+              "default": {
+                "description": "Names the key in sets that applies when nothing more specific does — the library-default rung of the ladder. Absent means no default. A namespace-level key rather than a per-set flag, because the map is unordered and two flagged sets would have no portable tiebreak. A default naming no key in sets is a dangling ref: it contributes nothing, with a resolverNotes line — never a rejected document.",
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sets"
+            ],
+            "additionalProperties": false,
+            "title": "NamedCueSets",
+            "description": "One phase's named cue sets: key → phaseCue array, and the key that applies by default."
+          },
+          "description": "Per phase, the named cue sets a cuesRef resolves against at this level, keyed intro / talk / qa."
+        },
+        "hintSets": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "enum": [
+              "intro",
+              "talk",
+              "qa"
+            ]
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "sets": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Which hint this is. OPEN VOCABULARY, not an enum: an unrecognised kind is a custom entry to be ignored, never a reason to reject the message. The four kinds this room implements are 'remaining' (switch the basis from the phase's own calculated minutes to block-remaining), 'floor' (a minimum duration), 'cap' (a maximum duration) and 'protectQA' (talk-only, valueless: cap talk at its own calculated minutes so it cannot borrow qa's time)."
+                      },
+                      "unit": {
+                        "description": "The unit of value; absent means 'minutes'. A percent floor/cap is of the phase's initial calculated minutes — the stable, pre-hint duration, not the live 'remaining' basis and not a cue's starting timer value.",
+                        "type": "string",
+                        "enum": [
+                          "minutes",
+                          "percent"
+                        ]
+                      },
+                      "value": {
+                        "description": "The floor/cap magnitude. Present iff kind is 'floor' or 'cap', and absent on every other kind including 'protectQA', which is a valueless cap-producer.",
+                        "type": "number"
+                      },
+                      "whenUnits": {
+                        "description": "The one unit shared by all three when* thresholds below; absent means 'minutes'. A percent here is of the presentation BLOCK (prEnd - prStart), not of the phase. Closed, unlike kind: a new unit is a spec change, not a producer extension. Units cannot be mixed across the three, which is never a real need since all three are block-relative.",
+                        "type": "string",
+                        "enum": [
+                          "minutes",
+                          "percent"
+                        ]
+                      },
+                      "whenOverBy": {
+                        "description": "Cumulative presentation overage, against the scheduled prEnd, required for this entry to qualify.",
+                        "type": "number"
+                      },
+                      "whenPrEarlyBy": {
+                        "description": "How early the block must have started for this entry to qualify.",
+                        "type": "number"
+                      },
+                      "whenPrLateBy": {
+                        "description": "How late the block must have started for this entry to qualify.",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "title": "TimerHint",
+                    "description": "One timer hint: how the phase's actual duration behaves under overrun. Evaluated once, at phase load, to set the phase's starting timer value — never re-evaluated thereafter. kind is an open vocabulary so an unrecognised entry degrades to ignored rather than rejecting the message; value is present iff kind is 'floor' or 'cap'."
+                  }
+                },
+                "description": "Key → one phase's hint array, the set a timerHintsRef names. Keys are scoped to this phase's namespace. A set holds hints, never refs."
+              },
+              "default": {
+                "description": "Names the key in sets that applies when nothing more specific does — the library-default rung of the ladder. Absent means no default. A namespace-level key rather than a per-set flag, because the map is unordered and two flagged sets would have no portable tiebreak. A default naming no key in sets is a dangling ref: it contributes nothing, with a resolverNotes line — never a rejected document.",
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "sets"
+            ],
+            "additionalProperties": false,
+            "title": "NamedHintSets",
+            "description": "One phase's named hint sets: key → timerHint array, and the key that applies by default."
+          },
+          "description": "Per phase, the named hint sets a timerHintsRef resolves against at this level, keyed intro / talk / qa."
+        }
+      },
+      "additionalProperties": false,
+      "description": "The value under the Timer:Presets configuration key — the room's own level of the named-set and preset library, in the wire's dialect: phasePresets (name → per-phase bodies, which may carry refs), cueSets and hintSets (per phase, key → array plus a default). A document, not a message: it rides no exchange and carries no envelope; a configuration port reads it per access, so an edit reaches the next phase load. Every member is optional."
+    }
+  }
+}

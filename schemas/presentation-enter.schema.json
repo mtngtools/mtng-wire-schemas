@@ -32,10 +32,10 @@
           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
           "description": "The PUBLISH instant — when this message went out, ISO-8601 UTC. Not the transition instant: a boot re-broadcast of an unchanged state refreshes ts and leaves enteredAt untouched. Which of the two a consumer's freshness logic reads is that consumer's decision, not this contract's."
         },
-        "presentationId": {
+        "prId": {
           "type": "string",
           "minLength": 1,
-          "description": "Opaque id of the presentation the room is entering. MATCHED BYTE-WISE, NEVER PARSED, as on the pointer. Required: a command asserting the room is in THIS presentation without naming it says nothing, and the pointer it produces carries presentationId whenever phase is not 'none'."
+          "description": "Opaque id of the presentation the room is entering. MATCHED BYTE-WISE, NEVER PARSED, as on the pointer. Required: a command asserting the room is in THIS presentation without naming it says nothing, and the pointer it produces carries prId whenever phase is not 'none'. When the presentation group rides, its prId equals this one."
         },
         "phase": {
           "description": "Which phase the room is entering. NO 'none' ARM: leaving is presentation.exit, not an enter that asserts absence. Optional because the manager's documented DEFAULT-TO-TALK covers absence — it stamps 'talk' whenever the phase is not explicitly 'intro' or 'qa', and an authored 'talk' and a defaulted one are indistinguishable on the wire.",
@@ -52,35 +52,474 @@
           "format": "date-time",
           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
         },
-        "block": {
+        "presentation": {
           "type": "object",
           "properties": {
-            "prTitle": {
-              "description": "The presentation's title, for displays that have nothing to join against.",
+            "prId": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "Opaque id of the presentation. MATCHED BYTE-WISE, NEVER PARSED: no structure is promised and equality is the only operation defined on it. On a message that carries this group it equals the prId on the message's core."
+            },
+            "prAltId": {
+              "description": "An alternate id for the presentation, as upstream carries it.",
+              "type": "string"
+            },
+            "prAbstractId": {
+              "description": "The id of the presentation's abstract in the host's system.",
+              "type": "string"
+            },
+            "prSlug": {
+              "description": "The presentation's URL-safe slug.",
+              "type": "string"
+            },
+            "prTitle": {
+              "type": "string",
+              "description": "The presentation's title. Required, and '' is allowed: a producer always has a title — the file name if nothing else — so the empty string is an honest empty where an absent title would be unknown."
+            },
+            "prAltTitle": {
+              "description": "An alternate title — a short form, a translation.",
+              "type": "string"
             },
             "prStart": {
-              "description": "The block's SCHEDULED start, ISO-8601 UTC. Not actualPrStart, which is the live fact and sits on the message's always-present core.",
+              "description": "The block's SCHEDULED start, ISO-8601 UTC. Not actualPrStart, which is the live fact on the message's core. Optional — a producer without a schedule has no honest value to send. With prEnd it is the block window a percent-unit timer hint threshold is a percentage of.",
               "type": "string",
               "format": "date-time",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
             },
             "prEnd": {
-              "description": "The block's SCHEDULED end, ISO-8601 UTC. With prStart it is the block window a percent-unit timer hint threshold is a percentage of.",
+              "description": "The block's SCHEDULED end, ISO-8601 UTC. prEnd carries prStart — a window's end says nothing without its start.",
               "type": "string",
               "format": "date-time",
               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+            },
+            "prStartStr": {
+              "description": "Upstream's preformatted display string for the start.",
+              "type": "string"
+            },
+            "prEndStr": {
+              "description": "Upstream's preformatted display string for the end.",
+              "type": "string"
+            },
+            "prType": {
+              "description": "The host's presentation type — 'keynote', 'lightning', whatever its programme uses.",
+              "type": "string"
+            },
+            "prTags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The host's tags. Three-state: absent is unknown, [] is explicitly none, populated is the list."
+            },
+            "prSecondaryTags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The host's secondary tags. Three-state, like prTags."
+            },
+            "prMetadata": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {},
+              "description": "Host-defined properties of the presentation, any shape, OPAQUE TO THE ROOM: nothing in the room reads, validates or acts on a key, and the consumer is the host's own display or integration code. Optional, and {} is allowed — absent says nothing, {} says explicitly empty. No prefix rule and no reserved keys inside: the pr/sp standard governs the schema's own members and stops here. Content wherever it is logged."
+            },
+            "prPhasesPreset": {
+              "description": "The key of a phases preset in the library — upstream's 'quick copy of everything', for speaker systems that can set one field. Resolved at phase load against the levels the room has, Timer:Presets among them; a dangling key falls through as if unset, with a resolverNotes line. Never affects durations.",
+              "type": "string",
+              "minLength": 1
+            },
+            "prPhasesCalculated": {
+              "type": "object",
+              "properties": {
+                "phases": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "enum": [
+                      "intro",
+                      "talk",
+                      "qa"
+                    ]
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "description": "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). Resolved per phase down the ladder — the entry's, then the preset's, then the built-in name — so absent here defers to the next rung. '' is allowed and is explicit: it wins the ladder like any present value, so the timer broadcasts an empty label — the one way to show no phase name. What the timer broadcasts as the top-level 'label' its own events carry.",
+                        "type": "string"
+                      },
+                      "load": {
+                        "type": "string",
+                        "enum": [
+                          "auto",
+                          "auto-paused",
+                          "clear",
+                          "ignore",
+                          "next"
+                        ],
+                        "description": "Authored intent for what a timer does when this phase becomes current: 'auto' sets the phase and runs it, 'auto-paused' sets and holds it (a 'remaining'-basis phase runs anyway — it cannot be staged), 'clear' clears the timer, 'ignore' does nothing, and 'next' sets and holds the NEXT phase as a preview. The runtime precedence below this value — the host phaseLoading rung, the timerAutomation kill-switch — is the Timer manager's and is not on the wire."
+                      },
+                      "phaseCues": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim into the reduced cue the timer broadcasts. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'. Consumer-facing only: it plays no part in the timing calculation. (Upstream spells this field 'kind'.)"
+                            },
+                            "anchor": {
+                              "description": "Which end of the phase 'at' is measured from; absent means 'end'. Load-bearing together with the sign of 'at', never inferred from it: 'end' fires before the end on a positive value and after it on a negative one, 'start' fires after the start on a positive value and before it on a negative one.",
+                              "type": "string",
+                              "enum": [
+                                "start",
+                                "end"
+                              ]
+                            },
+                            "at": {
+                              "type": "number",
+                              "description": "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by atUnits. Unlike upstream's phase-config 'minutes', a negative here is a direction and never an auto-mode sentinel. (A calculated entry's own 'minutes' admits no negative at all — resolution already answered auto.)"
+                            },
+                            "atUnits": {
+                              "description": "The unit of |at|; absent means 'minutes'. 'percent' measures against the phase's STARTING TIMER VALUE — what the timer starts the phase from, after any 'remaining' basis-switch and up-front floor/cap. That is NOT the floor/cap basis, which is the phase's initial calculated minutes. There is no [0,100] clamp: a percent may resolve outside the phase, exactly as a large absolute value can. A percent cue is dropped when the starting value is 0; an absolute cue is always kept.",
+                              "type": "string",
+                              "enum": [
+                                "minutes",
+                                "percent"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "label",
+                            "at"
+                          ],
+                          "additionalProperties": false,
+                          "title": "PhaseCue",
+                          "description": "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete clock threshold at phase load, because a percent threshold's denominator is not fixed until the phase starts."
+                        },
+                        "description": "The phase's cue set as AUTHORED, in phaseCue's symbolic form — thresholds not reduced. Inline beats cuesRef when both are set. Deliberately NOT the reduced timerCue the timer broadcasts as 'cues' on timer.state-changed: the authored list and the reduced set never share a spelling, because two shapes under one name merge silently in the C# mirror."
+                      },
+                      "timerHints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "Which hint this is. OPEN VOCABULARY, not an enum: an unrecognised kind is a custom entry to be ignored, never a reason to reject the message. The four kinds this room implements are 'remaining' (switch the basis from the phase's own calculated minutes to block-remaining), 'floor' (a minimum duration), 'cap' (a maximum duration) and 'protectQA' (talk-only, valueless: cap talk at its own calculated minutes so it cannot borrow qa's time)."
+                            },
+                            "unit": {
+                              "description": "The unit of value; absent means 'minutes'. A percent floor/cap is of the phase's initial calculated minutes — the stable, pre-hint duration, not the live 'remaining' basis and not a cue's starting timer value.",
+                              "type": "string",
+                              "enum": [
+                                "minutes",
+                                "percent"
+                              ]
+                            },
+                            "value": {
+                              "description": "The floor/cap magnitude. Present iff kind is 'floor' or 'cap', and absent on every other kind including 'protectQA', which is a valueless cap-producer.",
+                              "type": "number"
+                            },
+                            "whenUnits": {
+                              "description": "The one unit shared by all three when* thresholds below; absent means 'minutes'. A percent here is of the presentation BLOCK (prEnd - prStart), not of the phase. Closed, unlike kind: a new unit is a spec change, not a producer extension. Units cannot be mixed across the three, which is never a real need since all three are block-relative.",
+                              "type": "string",
+                              "enum": [
+                                "minutes",
+                                "percent"
+                              ]
+                            },
+                            "whenOverBy": {
+                              "description": "Cumulative presentation overage, against the scheduled prEnd, required for this entry to qualify.",
+                              "type": "number"
+                            },
+                            "whenPrEarlyBy": {
+                              "description": "How early the block must have started for this entry to qualify.",
+                              "type": "number"
+                            },
+                            "whenPrLateBy": {
+                              "description": "How late the block must have started for this entry to qualify.",
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false,
+                          "title": "TimerHint",
+                          "description": "One timer hint: how the phase's actual duration behaves under overrun. Evaluated once, at phase load, to set the phase's starting timer value — never re-evaluated thereafter. kind is an open vocabulary so an unrecognised entry degrades to ignored rather than rejecting the message; value is present iff kind is 'floor' or 'cap'."
+                        },
+                        "description": "The phase's hint set, in authored order — later qualifying entries win over earlier ones for the same bound. Inline beats timerHintsRef when both are set."
+                      },
+                      "cuesRef": {
+                        "description": "The key of a named cue set in the library, used when phaseCues is absent. Resolved per phase against the levels the room has — session, meeting, Timer:Presets — and a dangling key falls through the ladder with a resolverNotes line, never an error.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "timerHintsRef": {
+                        "description": "The key of a named hint set in the library, used when timerHints is absent. Resolved as cuesRef is.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "minutes": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "The phase's CALCULATED duration in minutes, fractions allowed; 0 for a no-time phase or a starved fill. Required — the Calculated tier always has an answer. The Timer manager's allocation basis, and the denominator a percent floor or cap measures against; an authored, qualifying 'remaining' hint still wins the basis."
+                      },
+                      "start": {
+                        "description": "Where the phase sits in the block — its calculated start, ISO-8601 UTC. Equal to end for a zero-length phase. Optional: a producer without a schedule has no honest value to send.",
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                      },
+                      "end": {
+                        "description": "The phase's calculated end, ISO-8601 UTC. end carries start — an end without a start says nothing.",
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "concrete",
+                          "fill",
+                          "no-time",
+                          "normalized-fill",
+                          "normalized-no-time"
+                        ],
+                        "description": "How the duration came to be what it is: 'concrete' was authored, 'fill' absorbed the block time the concrete phases left, 'no-time' is off the committed clock, and the two 'normalized-*' arms record that the input asked for two or more fills and the resolver's priority fallback picked a winner. Closed — upstream's PhaseCalculatedTiming.source, verbatim."
+                      }
+                    },
+                    "required": [
+                      "minutes",
+                      "source"
+                    ],
+                    "additionalProperties": false,
+                    "title": "CalculatedPhase",
+                    "description": "One phase at the Calculated tier: the phase body (label, load, phaseCues, timerHints, cuesRef, timerHintsRef) with its durations resolved — minutes and source required, start and end optional with end carrying start. Cue and hint sources stay symbolic and refs stay refs; the Timer manager resolves and reduces at phase load."
+                  },
+                  "description": "The phases that exist, keyed intro / talk / qa, each at the Calculated tier. A phase the presentation does not have is absent; a phase that exists with no committed time is present with minutes 0. No other key is legal."
+                },
+                "fit": {
+                  "type": "object",
+                  "properties": {
+                    "fit": {
+                      "type": "string",
+                      "enum": [
+                        "exact",
+                        "slack",
+                        "overflow"
+                      ],
+                      "description": "How the phases fit the block: 'exact' fills it, 'slack' leaves slackMin unused, 'overflow' exceeds it by overMin."
+                    },
+                    "slackMin": {
+                      "description": "Unused block minutes — present iff fit is 'slack'.",
+                      "type": "number"
+                    },
+                    "overMin": {
+                      "description": "Minutes over the block — present iff fit is 'overflow'.",
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "fit"
+                  ],
+                  "additionalProperties": false,
+                  "description": "The block fit as a tagged record — upstream's PhaseFit union, flattened because oneOf does not survive the C# mirror: fit selects the arm, slackMin rides 'slack' and overMin rides 'overflow'."
+                },
+                "resolverNotes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The resolver's data-quality diagnostics — '≥2 fill normalized' and the like. Not the cue schedule. Required, and may be empty."
+                }
+              },
+              "required": [
+                "phases",
+                "fit",
+                "resolverNotes"
+              ],
+              "additionalProperties": false,
+              "description": "Upstream's PresentationCalculatedTiming: the calculated phases, how they fit the block, and the resolver's notes. Cached complex-resolver output, carried so the room can resolve refs and reduce without recomputing durations."
+            },
+            "prSpeakers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "spId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Opaque id of the speaker. MATCHED BYTE-WISE, NEVER PARSED, like prId: no structure is promised and equality is the only operation defined on it. It is what a presentation's prModeratorIds names."
+                  },
+                  "spAltId": {
+                    "description": "An alternate id for the speaker, as upstream carries it.",
+                    "type": "string"
+                  },
+                  "spSlug": {
+                    "description": "The speaker's URL-safe slug.",
+                    "type": "string"
+                  },
+                  "spFullName": {
+                    "type": "string",
+                    "description": "The speaker's display name. Required, and '' is allowed: a producer always has something to call the person, so the empty string is an honest empty where an absent name would be unknown."
+                  },
+                  "spFirstName": {
+                    "description": "Given name.",
+                    "type": "string"
+                  },
+                  "spLastName": {
+                    "description": "Family name.",
+                    "type": "string"
+                  },
+                  "spFullOrg": {
+                    "description": "The speaker's affiliation in full.",
+                    "type": "string"
+                  },
+                  "spOrgName": {
+                    "description": "The affiliation's name alone.",
+                    "type": "string"
+                  },
+                  "spOrgLoc": {
+                    "description": "The affiliation's location.",
+                    "type": "string"
+                  },
+                  "spEmail": {
+                    "description": "Contact address. A plain string, as upstream is — the wire stays as lenient as its source.",
+                    "type": "string"
+                  },
+                  "spOrder": {
+                    "description": "Numeric sort position among the presentation's speakers. Not with spOrderKey — upstream's one 'string | number' is two typed members here because an untagged union does not survive the C# mirror.",
+                    "type": "number"
+                  },
+                  "spOrderKey": {
+                    "description": "String sort key among the presentation's speakers, for producers that order by keys like '1a'. Not with spOrder.",
+                    "type": "string"
+                  },
+                  "spPicURL": {
+                    "description": "Where the speaker's picture is. A plain string, as upstream is.",
+                    "type": "string"
+                  },
+                  "spMetadata": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {},
+                    "description": "Host-defined properties of the speaker, any shape, OPAQUE TO THE ROOM: nothing in the room reads, validates or acts on a key, and the consumer is the host's own display or integration code. Optional, and {} is allowed — absent says nothing, {} says explicitly empty. No prefix rule and no reserved keys inside: the pr/sp standard governs the schema's own members and stops here. Content wherever it is logged."
+                  }
+                },
+                "required": [
+                  "spId",
+                  "spFullName"
+                ],
+                "additionalProperties": false,
+                "description": "A speaker — upstream's SpeakerBase in the wire's dialect. spId and spFullName are required ('' allowed on the name); every other sp* member is optional and verbatim; spOrder and spOrderKey are one-of; spMetadata is a named bag, opaque to the room."
+              },
+              "description": "The presentation's speakers. Three-state: absent is unknown, [] is explicitly none — a video-only slot — and populated is the list."
+            },
+            "prModerators": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "spId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Opaque id of the speaker. MATCHED BYTE-WISE, NEVER PARSED, like prId: no structure is promised and equality is the only operation defined on it. It is what a presentation's prModeratorIds names."
+                  },
+                  "spAltId": {
+                    "description": "An alternate id for the speaker, as upstream carries it.",
+                    "type": "string"
+                  },
+                  "spSlug": {
+                    "description": "The speaker's URL-safe slug.",
+                    "type": "string"
+                  },
+                  "spFullName": {
+                    "type": "string",
+                    "description": "The speaker's display name. Required, and '' is allowed: a producer always has something to call the person, so the empty string is an honest empty where an absent name would be unknown."
+                  },
+                  "spFirstName": {
+                    "description": "Given name.",
+                    "type": "string"
+                  },
+                  "spLastName": {
+                    "description": "Family name.",
+                    "type": "string"
+                  },
+                  "spFullOrg": {
+                    "description": "The speaker's affiliation in full.",
+                    "type": "string"
+                  },
+                  "spOrgName": {
+                    "description": "The affiliation's name alone.",
+                    "type": "string"
+                  },
+                  "spOrgLoc": {
+                    "description": "The affiliation's location.",
+                    "type": "string"
+                  },
+                  "spEmail": {
+                    "description": "Contact address. A plain string, as upstream is — the wire stays as lenient as its source.",
+                    "type": "string"
+                  },
+                  "spOrder": {
+                    "description": "Numeric sort position among the presentation's speakers. Not with spOrderKey — upstream's one 'string | number' is two typed members here because an untagged union does not survive the C# mirror.",
+                    "type": "number"
+                  },
+                  "spOrderKey": {
+                    "description": "String sort key among the presentation's speakers, for producers that order by keys like '1a'. Not with spOrder.",
+                    "type": "string"
+                  },
+                  "spPicURL": {
+                    "description": "Where the speaker's picture is. A plain string, as upstream is.",
+                    "type": "string"
+                  },
+                  "spMetadata": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {},
+                    "description": "Host-defined properties of the speaker, any shape, OPAQUE TO THE ROOM: nothing in the room reads, validates or acts on a key, and the consumer is the host's own display or integration code. Optional, and {} is allowed — absent says nothing, {} says explicitly empty. No prefix rule and no reserved keys inside: the pr/sp standard governs the schema's own members and stops here. Content wherever it is logged."
+                  }
+                },
+                "required": [
+                  "spId",
+                  "spFullName"
+                ],
+                "additionalProperties": false,
+                "description": "A speaker — upstream's SpeakerBase in the wire's dialect. spId and spFullName are required ('' allowed on the name); every other sp* member is optional and verbatim; spOrder and spOrderKey are one-of; spMetadata is a named bag, opaque to the room."
+              },
+              "description": "The presentation's moderators as speaker objects. Not with prModeratorIds. Three-state like prSpeakers."
+            },
+            "prModeratorIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "The presentation's moderators as ids of speakers the consumer can reach — on this message's prSpeakers, or in its own cache. Not with prModerators: upstream allows 'SP[] | string[]' on its resolved shape, and an untagged union does not survive the C# mirror, so the id form is its own member. [] allowed."
             }
           },
+          "required": [
+            "prId",
+            "prTitle"
+          ],
           "additionalProperties": false,
-          "description": "SelfContained only: the presentation block — its title for displays, and its scheduled window for the timer's block-relative math. Absent in a Linked room, where the Meeting data manager holds it. Every member is optional and at least one is present; prEnd carries prStart."
+          "description": "The presentation — upstream's PresentationFull, field for field in the wire's dialect. On presentation.enter and presentation.state-changed it is the optional presentation group: never on phase 'none', and a producer may always send it whatever the room's dialect. Identity and display; the scheduled window (prEnd carries prStart); prSpeakers, and prModerators or prModeratorIds (one-of); prMetadata, a named bag opaque to the room; and the Calculated tier — prPhasesCalculated for every phase, refs intact, with prPhasesPreset. Raw prPhases never rides. Its prId equals the core's."
         },
         "session": {
           "type": "object",
           "properties": {
             "ssId": {
-              "description": "Opaque id of the session. MATCHED BYTE-WISE, NEVER PARSED, like presentationId: no structure is promised and equality is the only operation defined on it.",
+              "description": "Opaque id of the session. MATCHED BYTE-WISE, NEVER PARSED, like prId: no structure is promised and equality is the only operation defined on it.",
               "type": "string",
               "minLength": 1
             },
@@ -103,126 +542,7 @@
             }
           },
           "additionalProperties": false,
-          "description": "SelfContained only: the session containing the block. Absent in a Linked room, where the Meeting data manager holds it. Every member is optional and at least one is present; ssEnd carries ssStart."
-        },
-        "timer": {
-          "type": "object",
-          "properties": {
-            "minutes": {
-              "description": "The phase's RESOLVED CONCRETE duration in minutes — Resolved-tier output like the rest of the group, fractions allowed. Slots in as the phase's own calculated minutes: the Timer manager's allocation basis, and the denominator a percent floor or cap measures against. An authored, qualifying 'remaining' hint still wins the basis, exactly as in Linked — this member rides below the hint machinery, not above it. 0 is an authored no-time. Absent keeps today's behavior — basis 0 unless a remaining hint switches it — no new absence meaning.",
-              "type": "number",
-              "minimum": 0
-            },
-            "label": {
-              "description": "The phase's display name as resolved by the producer — what the timer broadcasts as the phase's name, feeding the top-level 'label' the timer's own events carry. Absent, the Timer manager's built-in phase name stands.",
-              "type": "string",
-              "minLength": 1
-            },
-            "phaseCues": {
-              "description": "The phase's cue set as AUTHORED, in phaseCue's symbolic form — refs already dereferenced and any preset applied, but thresholds not reduced. The Timer manager reduces them to concrete clock values at phase load, because a percent threshold measures against a starting timer value that is not fixed until the phase starts. Deliberately NOT the reduced timerCue the timer broadcasts on timer.state-changed.",
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "label": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim into the reduced cue the timer broadcasts. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'. Consumer-facing only: it plays no part in the timing calculation. (Upstream spells this field 'kind'.)"
-                  },
-                  "anchor": {
-                    "description": "Which end of the phase 'at' is measured from; absent means 'end'. Load-bearing together with the sign of 'at', never inferred from it: 'end' fires before the end on a positive value and after it on a negative one, 'start' fires after the start on a positive value and before it on a negative one.",
-                    "type": "string",
-                    "enum": [
-                      "start",
-                      "end"
-                    ]
-                  },
-                  "at": {
-                    "type": "number",
-                    "description": "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by atUnits. Unlike upstream's phase-config 'minutes', a negative here is a direction and never an auto-mode sentinel. (The timer group's own 'minutes' admits no negative at all — resolution already answered auto.)"
-                  },
-                  "atUnits": {
-                    "description": "The unit of |at|; absent means 'minutes'. 'percent' measures against the phase's STARTING TIMER VALUE — what the timer starts the phase from, after any 'remaining' basis-switch and up-front floor/cap. That is NOT the floor/cap basis, which is the phase's initial calculated minutes. There is no [0,100] clamp: a percent may resolve outside the phase, exactly as a large absolute value can. A percent cue is dropped when the starting value is 0; an absolute cue is always kept.",
-                    "type": "string",
-                    "enum": [
-                      "minutes",
-                      "percent"
-                    ]
-                  }
-                },
-                "required": [
-                  "label",
-                  "at"
-                ],
-                "additionalProperties": false,
-                "description": "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete clock threshold at phase load, because a percent threshold's denominator is not fixed until the phase starts."
-              }
-            },
-            "timerHints": {
-              "description": "The resolved hint set for the phase, in authored order — later qualifying entries win over earlier ones for the same bound.",
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Which hint this is. OPEN VOCABULARY, not an enum: an unrecognised kind is a custom entry to be ignored, never a reason to reject the message. The four kinds this room implements are 'remaining' (switch the basis from the phase's own calculated minutes to block-remaining), 'floor' (a minimum duration), 'cap' (a maximum duration) and 'protectQA' (talk-only, valueless: cap talk at its own calculated minutes so it cannot borrow qa's time)."
-                  },
-                  "unit": {
-                    "description": "The unit of value; absent means 'minutes'. A percent floor/cap is of the phase's initial calculated minutes — the stable, pre-hint duration, not the live 'remaining' basis and not a cue's starting timer value.",
-                    "type": "string",
-                    "enum": [
-                      "minutes",
-                      "percent"
-                    ]
-                  },
-                  "value": {
-                    "description": "The floor/cap magnitude. Present iff kind is 'floor' or 'cap', and absent on every other kind including 'protectQA', which is a valueless cap-producer.",
-                    "type": "number"
-                  },
-                  "whenUnits": {
-                    "description": "The one unit shared by all three when* thresholds below; absent means 'minutes'. A percent here is of the presentation BLOCK (prEnd - prStart), not of the phase. Closed, unlike kind: a new unit is a spec change, not a producer extension. Units cannot be mixed across the three, which is never a real need since all three are block-relative.",
-                    "type": "string",
-                    "enum": [
-                      "minutes",
-                      "percent"
-                    ]
-                  },
-                  "whenOverBy": {
-                    "description": "Cumulative presentation overage, against the scheduled prEnd, required for this entry to qualify.",
-                    "type": "number"
-                  },
-                  "whenPrEarlyBy": {
-                    "description": "How early the block must have started for this entry to qualify.",
-                    "type": "number"
-                  },
-                  "whenPrLateBy": {
-                    "description": "How late the block must have started for this entry to qualify.",
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "kind"
-                ],
-                "additionalProperties": false,
-                "description": "One timer hint: how the phase's actual duration behaves under overrun. Evaluated once, at phase load, to set the phase's starting timer value — never re-evaluated thereafter. kind is an open vocabulary so an unrecognised entry degrades to ignored rather than rejecting the message; value is present iff kind is 'floor' or 'cap'."
-              }
-            },
-            "load": {
-              "type": "string",
-              "enum": [
-                "auto",
-                "auto-paused",
-                "clear",
-                "ignore",
-                "next"
-              ],
-              "description": "Authored intent for what a timer does when this phase becomes current: 'auto' sets the phase and runs it, 'auto-paused' sets and holds it (a 'remaining'-basis phase runs anyway — it cannot be staged), 'clear' clears the timer, 'ignore' does nothing, and 'next' sets and holds the NEXT phase as a preview. The runtime precedence below this value — the host phaseLoading rung, the timerAutomation kill-switch — is the Timer manager's and is not on the wire."
-            }
-          },
-          "additionalProperties": false,
-          "description": "SelfContained only: what the producer ran the Resolved tier over for the timer — the phase's concrete minutes and display label, its authored cue set, its hint set, and its load directive, inline and ref-free. Timer manager only. Cues and hints stay symbolic — the timer runs the Runtime tier over them in both dialects. Absent in a Linked room, where the Timer manager runs the Resolved tier too. Every member is optional and at least one is present."
+          "description": "The session containing the block: its id, its title for displays, and its scheduled window. Every member is optional and at least one is present; ssEnd carries ssStart. A producer that does not model sessions omits the group."
         },
         "file": {
           "type": "object",
@@ -230,7 +550,7 @@
             "instanceId": {
               "type": "string",
               "minLength": 1,
-              "description": "Opaque id of the presentation instance — the machine or process with the file open. MATCHED BYTE-WISE, NEVER PARSED, like presentationId, and loose on purpose: it exists so a producer can reconcile with itself, not so anything routes on it. It is the files array's uniqueness key."
+              "description": "Opaque id of the presentation instance — the machine or process with the file open. MATCHED BYTE-WISE, NEVER PARSED, like prId, and loose on purpose: it exists so a producer can reconcile with itself, not so anything routes on it. It is the files array's uniqueness key."
             },
             "path": {
               "type": "object",
@@ -240,8 +560,8 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "presentationSubDirectory": {
-                  "description": "The sub-directory the file sits in, below that root.",
+                "prSubDirectory": {
+                  "description": "The sub-directory the presentation's file sits in, below that root.",
                   "type": "string",
                   "minLength": 1
                 },
@@ -268,10 +588,10 @@
         "domain",
         "kind",
         "ts",
-        "presentationId"
+        "prId"
       ],
       "additionalProperties": false,
-      "description": "The room is now in this presentation. An imperative that asserts a state, not a past-tense report: a report-only driver records it, a driving driver opens the file, and one command covers both rooms. Carries presentationId always, the phase when it is not the defaulted 'talk', and the SelfContained groups a producer holds. THE FILE IS SINGULAR where the pointer carries a files array: a command comes from and addresses one instance, and only the room's state aggregates across them; a reporter with no file open — a live panel — omits it. enteredAt is the manager's to mint and never rides the command. Acknowledged by the resulting presentation.state-changed, not by an echo of its own."
+      "description": "The room is now in this presentation. An imperative that asserts a state, not a past-tense report: a report-only driver records it, a driving driver opens the file, and one command covers both rooms. Carries prId always, the phase when it is not the defaulted 'talk', and the groups a producer holds — the presentation itself (its prId equal to this one), the session, the file. THE FILE IS SINGULAR where the pointer carries a files array: a command comes from and addresses one instance, and only the room's state aggregates across them; a reporter with no file open — a live panel — omits it. enteredAt is the manager's to mint and never rides the command. Acknowledged by the resulting presentation.state-changed, not by an echo of its own."
     }
   }
 }

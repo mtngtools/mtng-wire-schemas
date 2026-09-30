@@ -1,0 +1,59 @@
+{
+  "name": "calculated-window-absent",
+  "wire": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prSpeakers": [],
+    "prPhasesCalculated": {
+      "phases": {
+        "talk": {
+          "minutes": 20,
+          "source": "concrete"
+        },
+        "qa": {
+          "minutes": 5,
+          "source": "fill"
+        }
+      },
+      "fit": {
+        "fit": "exact"
+      },
+      "resolverNotes": []
+    }
+  },
+  "expected": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prStart": 0,
+    "prEnd": 0,
+    "prSpeakers": [],
+    "prPhasesCalculated": {
+      "phases": {
+        "talk": {
+          "minutes": 20,
+          "source": "concrete",
+          "start": 0,
+          "end": 0
+        },
+        "qa": {
+          "minutes": 5,
+          "source": "fill",
+          "start": 0,
+          "end": 0
+        }
+      },
+      "fit": {
+        "fit": "exact"
+      },
+      "resolverNotes": []
+    },
+    "filled": [
+      "prEnd",
+      "prPhasesCalculated.phases.qa.end",
+      "prPhasesCalculated.phases.qa.start",
+      "prPhasesCalculated.phases.talk.end",
+      "prPhasesCalculated.phases.talk.start",
+      "prStart"
+    ]
+  }
+}

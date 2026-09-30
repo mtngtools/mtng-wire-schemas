@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { blockGroup, presentationFile, sessionGroup, timerGroup } from "../../shared/presentation-context.ts";
+import {
+  presentationFile,
+  presentationGroup,
+  sessionGroup,
+} from "../../shared/presentation-context.ts";
 import { addressedInstance, presentationEnvelope } from "./common.ts";
 
 /**
@@ -30,10 +34,11 @@ import { addressedInstance, presentationEnvelope } from "./common.ts";
  * covers native and third-party rooms rather than forking into an `open` imperative and an
  * `opened` report — the move [`timer.set-to`](../timer/commands.ts) already makes.
  *
- * Carries the pointer's own identity members plus the same `SelfContained` groups, with a
- * **singular `file`** where the pointer carries the `files` array: a command comes from and
- * addresses one instance, and only the room's *state* aggregates across them
- * (mtngtools/mtng-dotnet-mono#379).
+ * Carries the pointer's own identity members plus the same optional groups, with a **singular
+ * `file`** where the pointer carries the `files` array: a command comes from and addresses one
+ * instance, and only the room's *state* aggregates across them (mtngtools/mtng-dotnet-mono#379).
+ * The Present manager relays the `presentation` group verbatim onto the pointer it produces —
+ * never read, never resolved (ADR-0033).
  *
  * **`enteredAt` is deliberately absent.** Minting it is the Manager shell's obligation — on every
  * transition, and restored rather than re-minted across its own restart — so a client cannot
@@ -42,14 +47,14 @@ import { addressedInstance, presentationEnvelope } from "./common.ts";
 export const PresentationEnter = z
   .strictObject({
     ...presentationEnvelope("enter", "command"),
-    presentationId: z
+    prId: z
       .string()
       .min(1)
       .describe(
         "Opaque id of the presentation the room is entering. MATCHED BYTE-WISE, NEVER PARSED, " +
           "as on the pointer. Required: a command asserting the room is in THIS presentation " +
-          "without naming it says nothing, and the pointer it produces carries presentationId " +
-          "whenever phase is not 'none'.",
+          "without naming it says nothing, and the pointer it produces carries prId whenever " +
+          "phase is not 'none'. When the presentation group rides, its prId equals this one.",
       ),
     phase: z
       .enum(["intro", "talk", "qa"])
@@ -70,23 +75,37 @@ export const PresentationEnter = z
           "before it ever connected to the room. Absent leaves the manager to stamp it at " +
           "phase-begin. Not enteredAt, which is the manager's alone.",
       ),
-    block: blockGroup.optional(),
-    session: sessionGroup.optional(),
-    timer: timerGroup.optional(),
-    // Spread bare, with no wrapping .describe(): one here would REPLACE presentationFile's own,
+    // Spread bare, with no wrapping .describe(): one here would REPLACE each shape's own,
     // silently shipping this site's words in place of the shape's. The singular-versus-array
-    // reasoning is on the message instead, which is what it is about.
+    // reasoning for file is on the message instead, which is what it is about.
+    presentation: presentationGroup.optional(),
+    session: sessionGroup.optional(),
     file: presentationFile.optional(),
+  })
+  .check((ctx) => {
+    const { prId, presentation } = ctx.value;
+
+    if (presentation !== undefined && presentation.prId !== prId) {
+      // Identity misfiles data — the same invariant the pointer enforces, at the door it comes
+      // in through.
+      ctx.issues.push({
+        code: "custom",
+        input: ctx.value,
+        path: ["presentation", "prId"],
+        message: `the presentation group's prId '${presentation.prId}' is not the command's '${prId}'`,
+      });
+    }
   })
   .describe(
     "The room is now in this presentation. An imperative that asserts a state, not a past-tense " +
       "report: a report-only driver records it, a driving driver opens the file, and one command " +
-      "covers both rooms. Carries presentationId always, the phase when it is not the defaulted " +
-      "'talk', and the SelfContained groups a producer holds. THE FILE IS SINGULAR where the " +
-      "pointer carries a files array: a command comes from and addresses one instance, and only " +
-      "the room's state aggregates across them; a reporter with no file open — a live panel — " +
-      "omits it. enteredAt is the manager's to mint and never rides the command. Acknowledged by " +
-      "the resulting presentation.state-changed, not by an echo of its own.",
+      "covers both rooms. Carries prId always, the phase when it is not the defaulted 'talk', " +
+      "and the groups a producer holds — the presentation itself (its prId equal to this one), " +
+      "the session, the file. THE FILE IS SINGULAR where the pointer carries a files array: a " +
+      "command comes from and addresses one instance, and only the room's state aggregates " +
+      "across them; a reporter with no file open — a live panel — omits it. enteredAt is the " +
+      "manager's to mint and never rides the command. Acknowledged by the resulting " +
+      "presentation.state-changed, not by an echo of its own.",
   );
 
 export type PresentationEnter = z.infer<typeof PresentationEnter>;
@@ -95,9 +114,9 @@ export type PresentationEnter = z.infer<typeof PresentationEnter>;
  * `presentation.exit` — leave the presentation; takes `phase` to `none`.
  *
  * Envelope-only. `phase: none` is the absence of a presentation and is room-wide: it carries no
- * `presentationId`, no `actualPrStart` and none of the four groups, so there is nothing for the
- * command to say beyond its own name. Not per-instance for the same reason — an instance closing
- * its file is a report that changes the `files` array, not an exit from the presentation.
+ * `prId`, no `actualPrStart` and none of the groups, so there is nothing for the command to say
+ * beyond its own name. Not per-instance for the same reason — an instance closing its file is a
+ * report that changes the `files` array, not an exit from the presentation.
  *
  * Acknowledged by the resulting `presentation.state-changed`, like `enter`.
  */
@@ -107,8 +126,8 @@ export const PresentationExit = z
   })
   .describe(
     "Leave the presentation — takes phase to 'none'. Envelope-only: 'none' is room-wide and " +
-      "carries no presentationId, no actualPrStart and none of the four groups, so there is " +
-      "nothing to say beyond the name. Acknowledged by the resulting presentation.state-changed.",
+      "carries no prId, no actualPrStart and none of the groups, so there is nothing to say " +
+      "beyond the name. Acknowledged by the resulting presentation.state-changed.",
   );
 
 export type PresentationExit = z.infer<typeof PresentationExit>;

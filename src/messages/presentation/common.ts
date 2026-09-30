@@ -79,7 +79,7 @@ export const addressedInstance = () => ({
     .optional()
     .describe(
       "Which presentation instance this concerns — the machine or process with the file open. " +
-        "MATCHED BYTE-WISE, NEVER PARSED, like presentationId, and loose on purpose: it exists " +
+        "MATCHED BYTE-WISE, NEVER PARSED, like prId, and loose on purpose: it exists " +
         "so a producer can reconcile with itself, not so anything routes on it. It is the same " +
         "id the pointer's files array is keyed by. Absent addresses the room's presentation " +
         "instance; which one a multi-lectern room means is the driver's, because actuation " +

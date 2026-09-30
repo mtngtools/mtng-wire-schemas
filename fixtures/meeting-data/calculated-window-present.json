@@ -1,0 +1,116 @@
+{
+  "name": "calculated-window-present",
+  "wire": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prStart": "2026-09-29T14:00:00Z",
+    "prEnd": "2026-09-29T14:30:00Z",
+    "prSpeakers": [],
+    "prPhasesPreset": "standard",
+    "prPhasesCalculated": {
+      "phases": {
+        "intro": {
+          "minutes": 0,
+          "source": "no-time",
+          "start": "2026-09-29T14:00:00Z",
+          "end": "2026-09-29T14:00:00Z"
+        },
+        "talk": {
+          "label": "Talk",
+          "load": "auto",
+          "minutes": 20,
+          "source": "concrete",
+          "start": "2026-09-29T14:00:00Z",
+          "end": "2026-09-29T14:20:00Z",
+          "phaseCues": [
+            {
+              "label": "warn",
+              "at": 2
+            },
+            {
+              "label": "timesUp",
+              "at": 0
+            }
+          ],
+          "timerHintsRef": "talk-standard"
+        },
+        "qa": {
+          "minutes": 5,
+          "source": "fill",
+          "start": "2026-09-29T14:20:00Z",
+          "end": "2026-09-29T14:25:00Z",
+          "cuesRef": "qa-standard",
+          "timerHints": [
+            {
+              "kind": "protectQA"
+            }
+          ]
+        }
+      },
+      "fit": {
+        "fit": "slack",
+        "slackMin": 5
+      },
+      "resolverNotes": [
+        "fill starved to 5 minutes"
+      ]
+    }
+  },
+  "expected": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prStart": 1790690400000,
+    "prEnd": 1790692200000,
+    "prSpeakers": [],
+    "prPhasesPreset": "standard",
+    "prPhasesCalculated": {
+      "phases": {
+        "intro": {
+          "minutes": 0,
+          "source": "no-time",
+          "start": 1790690400000,
+          "end": 1790690400000
+        },
+        "talk": {
+          "label": "Talk",
+          "load": "auto",
+          "minutes": 20,
+          "source": "concrete",
+          "start": 1790690400000,
+          "end": 1790691600000,
+          "phaseCues": [
+            {
+              "label": "warn",
+              "at": 2
+            },
+            {
+              "label": "timesUp",
+              "at": 0
+            }
+          ],
+          "timerHintsRef": "talk-standard"
+        },
+        "qa": {
+          "minutes": 5,
+          "source": "fill",
+          "start": 1790691600000,
+          "end": 1790691900000,
+          "cuesRef": "qa-standard",
+          "timerHints": [
+            {
+              "kind": "protectQA"
+            }
+          ]
+        }
+      },
+      "fit": {
+        "fit": "slack",
+        "slackMin": 5
+      },
+      "resolverNotes": [
+        "fill starved to 5 minutes"
+      ]
+    },
+    "filled": []
+  }
+}

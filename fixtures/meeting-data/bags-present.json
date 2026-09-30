@@ -1,0 +1,54 @@
+{
+  "name": "bags-present",
+  "wire": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prStart": "2026-09-29T14:00:00Z",
+    "prEnd": "2026-09-29T14:30:00Z",
+    "prTags": [
+      "history"
+    ],
+    "prMetadata": {
+      "track": "A",
+      "room": {
+        "level": 2
+      },
+      "sponsored": false
+    },
+    "prSpeakers": [
+      {
+        "spId": "sp-ada",
+        "spFullName": "Ada Lovelace",
+        "spMetadata": {
+          "pronouns": "she/her"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "prId": "pr-engines",
+    "prTitle": "On the Analytical Engine",
+    "prStart": 1790690400000,
+    "prEnd": 1790692200000,
+    "prTags": [
+      "history"
+    ],
+    "prMetadata": {
+      "track": "A",
+      "room": {
+        "level": 2
+      },
+      "sponsored": false
+    },
+    "prSpeakers": [
+      {
+        "spId": "sp-ada",
+        "spFullName": "Ada Lovelace",
+        "spMetadata": {
+          "pronouns": "she/her"
+        }
+      }
+    ],
+    "filled": []
+  }
+}

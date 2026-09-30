@@ -87,8 +87,8 @@ export { PresentationCurrentState } from "./messages/presentation/rpc.ts";
 // presentation domain — the command set and its one echo (mtngtools/mtng-dotnet-mono#383, specced
 // by #374). All seven dual, ruled per message:
 //
-//   - enter is the SelfContained report path, and ADR-0024 defines that dialect around producers
-//     who are deliberately NOT version-pinned to the room. A third-party producer holding a deck
+//   - enter is the third-party report path, and ADR-0033 (superseding ADR-0024) keeps that path
+//     open to producers who are deliberately NOT version-pinned to the room. A producer holding a deck
 //     open is as likely .NET on the lectern as it is TS, so the report has to be sayable from
 //     both sides or the dialect only half exists.
 //   - exit is enter's pair. Splitting them would let a client say the room entered a
@@ -100,8 +100,10 @@ export { PresentationCurrentState } from "./messages/presentation/rpc.ts";
 //     unchanged: a commands-dual/events-single split would let a console send goto-next-slide
 //     and not read the echo telling it the move happened.
 //
-// Nothing here strains the mirror — every member is a scalar, a closed enum, or the same
-// presentationFile the pointer already ships.
+// Nothing here strains the mirror: enter's groups — the presentation entity, the session, the
+// file — are the same Zod objects the pointer already ships, so they mirror as the same
+// structures under enter's own name (PresentationEnterPresentation beside
+// PresentationStateChangedPresentation), the per-message duplication the Core.Wire spec accepts.
 export {
   PresentationEnter,
   PresentationExit,

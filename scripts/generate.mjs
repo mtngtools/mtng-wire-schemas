@@ -1,7 +1,7 @@
 // generate — the TypeScript half of the cross-language wire contract (ADR-0005).
 //
-// Walks src/messages/, emits one JSON Schema per authored message into schemas/, and deletes
-// any schema whose message no longer exists. The .NET side then mirrors schemas/ into C# with
+// Walks src/messages/, emits one JSON Schema per authored message or document into schemas/,
+// and deletes any schema whose export no longer exists. The .NET side then mirrors schemas/ into C# with
 // NJsonSchema; both generated sides are committed and guarded by `git diff --exit-code`, so
 // neither language can drift from this source.
 //

@@ -7,7 +7,7 @@ import { z } from "zod";
  * are the pieces every timer message is assembled from.
  *
  * **`timerCue` is no longer one of them** — it moved to [`src/shared/timing.ts`](../../shared/timing.ts)
- * when the presentation domain's `timer` group started carrying it too
+ * when the presentation domain's phase entries started carrying its authored half too
  * (mtngtools/mtng-dotnet-mono#380). What is left here is what only this domain uses.
  *
  * The authoring rules these follow (`.describe()` over JSDoc, `z.enum` over `z.literal`, no

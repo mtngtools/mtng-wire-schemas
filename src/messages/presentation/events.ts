@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   duplicateInstanceIds,
   presentationContext,
+  presentationGroup,
 } from "../../shared/presentation-context.ts";
 import { addressedInstance, presentationEnvelope } from "./common.ts";
 
@@ -17,17 +18,19 @@ import { addressedInstance, presentationEnvelope } from "./common.ts";
  * statement and not a delta, a broadcast and an RPC reply are the same shape applied by the
  * same code — which is why `presentation.current-state` replies with this very message.
  *
- * **Thin at the core, a superset in `SelfContained`.** The four members below are needed in both
- * dialects and stay the always-present core; a `Linked` room sends nothing else, and displays
- * join `presentationId` against the Meeting data manager's own broadcast. A `SelfContained` room
- * has no such manager, so the context it would have joined for rides the four optional groups
- * instead (ADR-0024; mtngtools/mtng-dotnet-mono#372). The core stays thin either way — what
- * changes is whether anything else is present at all.
+ * **Thin at the core, and the groups beside it.** The four members below are needed in both
+ * dialects and stay the always-present core; in a `Linked` room displays may join `prId` against
+ * the Meeting data manager's own broadcast, and the Timer manager takes only the key from here.
+ * What a producer knows besides rides the optional groups — the `presentation` itself, the
+ * `session`, the `files` — and a producer may always send them, whatever the room's dialect
+ * (ADR-0033). The core stays thin either way — what changes is whether anything else is present
+ * at all.
  *
  * A **tagged record rather than a discriminated union**, because `oneOf` does not survive the
- * mirror to C# — see the README. The invariant the union would have carried — the body is
- * present iff `phase ≠ none` — is enforced by the `.check()` below, so this side still rejects
- * a malformed pointer; JSON Schema and C# carry the structure only.
+ * mirror to C# — see the README. The invariants the union would have carried — the body is
+ * present iff `phase ≠ none`, the groups never ride `none`, the group's `prId` is the core's —
+ * are enforced by the `.check()` below, so this side still rejects a malformed pointer; JSON
+ * Schema and C# carry the structure only.
  */
 export const PresentationStateChanged = z
   .strictObject({
@@ -40,16 +43,17 @@ export const PresentationStateChanged = z
           "'intro' or 'qa', so a 'talk' may be authored or defaulted and the two are " +
           "indistinguishable on the wire — there is no 'unknown' value and no source flag. " +
           "Consumers must not key logic on phase alone; corroborate it against enteredAt and " +
-          "presentationId.",
+          "prId.",
       ),
-    presentationId: z
+    prId: z
       .string()
       .min(1)
       .optional()
       .describe(
         "Opaque id of the presentation as held by the Meeting data manager (either ingest " +
           "path). MATCHED BYTE-WISE, NEVER PARSED: no structure is promised, and equality is " +
-          "the only operation defined on it. Present iff phase ≠ none.",
+          "the only operation defined on it. Present iff phase ≠ none. When the presentation " +
+          "group rides, its prId equals this one.",
       ),
     actualPrStart: z
       .iso
@@ -73,10 +77,13 @@ export const PresentationStateChanged = z
           "retained snapshot rather than re-minted. A re-minted stamp is monotonic and " +
           "plausible, and silently breaks every consumer keying on this.",
       ),
+    // Spread bare, with no wrapping .describe(): one here would REPLACE the entity's own,
+    // silently shipping this site's words in place of the shape's and losing its invariants.
+    presentation: presentationGroup.optional(),
     ...presentationContext(),
   })
   .check((ctx) => {
-    const { phase, presentationId, actualPrStart, block, session, timer, files } = ctx.value;
+    const { phase, prId, actualPrStart, presentation, session, files } = ctx.value;
 
     for (const duplicate of duplicateInstanceIds(files)) {
       ctx.issues.push({
@@ -91,9 +98,8 @@ export const PresentationStateChanged = z
       // The groups describe a presentation, and 'none' is the absence of one — so a room in
       // 'none' carries none of them, in either dialect.
       for (const [name, group] of [
-        ["block", block],
+        ["presentation", presentation],
         ["session", session],
-        ["timer", timer],
         ["files", files],
       ] as const) {
         if (group !== undefined) {
@@ -106,12 +112,12 @@ export const PresentationStateChanged = z
         }
       }
 
-      if (presentationId !== undefined) {
+      if (prId !== undefined) {
         ctx.issues.push({
           code: "custom",
           input: ctx.value,
-          path: ["presentationId"],
-          message: "phase 'none' carries no presentationId",
+          path: ["prId"],
+          message: "phase 'none' carries no prId",
         });
       }
 
@@ -127,12 +133,12 @@ export const PresentationStateChanged = z
       return;
     }
 
-    if (presentationId === undefined) {
+    if (prId === undefined) {
       ctx.issues.push({
         code: "custom",
         input: ctx.value,
-        path: ["presentationId"],
-        message: "a phase other than 'none' carries presentationId",
+        path: ["prId"],
+        message: "a phase other than 'none' carries prId",
       });
     }
 
@@ -144,15 +150,26 @@ export const PresentationStateChanged = z
         message: "a phase other than 'none' carries actualPrStart",
       });
     }
+
+    if (presentation !== undefined && prId !== undefined && presentation.prId !== prId) {
+      // Identity misfiles data: a group filed under the wrong id would be joined, cached and
+      // resolved as some other presentation's. The one cross-group invariant.
+      ctx.issues.push({
+        code: "custom",
+        input: ctx.value,
+        path: ["presentation", "prId"],
+        message: `the presentation group's prId '${presentation.prId}' is not the core's '${prId}'`,
+      });
+    }
   })
   .describe(
     "The room's presentation pointer: a full, self-contained statement of the current state, " +
       "published on every transition (entering 'none' included) and on boot re-broadcast. The " +
       "same shape answers the current-state RPC, so a snapshot and a transition are applied by " +
-      "the same code. presentationId and actualPrStart are present iff phase ≠ none; enteredAt " +
-      "is always present and is the equality key for 'same state'. A SelfContained room adds the " +
-      "four optional groups — block, session, timer and files — which a Linked room never sends " +
-      "and which phase 'none' never carries.",
+      "the same code. prId and actualPrStart are present iff phase ≠ none; enteredAt is always " +
+      "present and is the equality key for 'same state'. A producer adds the optional groups it " +
+      "holds — presentation, session and files — whatever the room's dialect; phase 'none' " +
+      "never carries them, and the presentation group's prId equals the core's.",
   );
 
 export type PresentationStateChanged = z.infer<typeof PresentationStateChanged>;

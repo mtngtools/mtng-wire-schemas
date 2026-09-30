@@ -33,7 +33,7 @@
           "description": "The PUBLISH instant — when this message went out, ISO-8601 UTC. Not the transition instant: a boot re-broadcast of an unchanged state refreshes ts and leaves enteredAt untouched. Which of the two a consumer's freshness logic reads is that consumer's decision, not this contract's."
         },
         "instanceId": {
-          "description": "Which presentation instance this concerns — the machine or process with the file open. MATCHED BYTE-WISE, NEVER PARSED, like presentationId, and loose on purpose: it exists so a producer can reconcile with itself, not so anything routes on it. It is the same id the pointer's files array is keyed by. Absent addresses the room's presentation instance; which one a multi-lectern room means is the driver's, because actuation stops at the Manager.",
+          "description": "Which presentation instance this concerns — the machine or process with the file open. MATCHED BYTE-WISE, NEVER PARSED, like prId, and loose on purpose: it exists so a producer can reconcile with itself, not so anything routes on it. It is the same id the pointer's files array is keyed by. Absent addresses the room's presentation instance; which one a multi-lectern room means is the driver's, because actuation stops at the Manager.",
           "type": "string",
           "minLength": 1
         }

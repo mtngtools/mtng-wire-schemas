@@ -40,7 +40,7 @@
         "ts"
       ],
       "additionalProperties": false,
-      "description": "Leave the presentation — takes phase to 'none'. Envelope-only: 'none' is room-wide and carries no presentationId, no actualPrStart and none of the four groups, so there is nothing to say beyond the name. Acknowledged by the resulting presentation.state-changed."
+      "description": "Leave the presentation — takes phase to 'none'. Envelope-only: 'none' is room-wide and carries no prId, no actualPrStart and none of the groups, so there is nothing to say beyond the name. Acknowledged by the resulting presentation.state-changed."
     }
   }
 }

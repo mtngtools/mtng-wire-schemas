@@ -7,12 +7,14 @@ import { z } from "zod";
  * outside `src/messages/` rather than beside the domains, where it would read as a fifth one
  * (mtngtools/mtng-dotnet-mono#380).
  *
- * **Why this vocabulary is shared rather than imported across the domains.** A `SelfContained`
- * room's `presentation.state-changed` carries a `timer` group built from it
- * (mtngtools/mtng-dotnet-mono#372), and the timer's own events carry the presentation domain's
- * groups back out (#378). The dependency therefore runs both ways, and both `common.ts` files
- * build Zod schemas at module top level — so mutual imports would be a circular *runtime*
- * dependency in which one side evaluates to `undefined` depending on entry order.
+ * **Why this vocabulary is shared rather than imported across the domains.** The `presentation`
+ * group's calculated entries are built from it (`meeting-data.ts`) and ride
+ * `presentation.state-changed` and `presentation.enter`; the timer's own events carry the
+ * presentation domain's context back out (mtngtools/mtng-dotnet-mono#378); and the `TimerPresets`
+ * document (`messages/timer/documents.ts`) is authored in it too, so a host spells one vocabulary
+ * on the wire and in configuration (ADR-0033). The dependency therefore runs both ways, and both
+ * `common.ts` files build Zod schemas at module top level — so mutual imports would be a circular
+ * *runtime* dependency in which one side evaluates to `undefined` depending on entry order.
  *
  * **The module is the unit, not the individual export.** `timerCue` lives here even though only
  * the timer domain imports it today: it is what {@link phaseCue} reduces *into*, and the two are
@@ -28,6 +30,13 @@ import { z } from "zod";
  * is exported from the barrel because it is a closed union the TS side has to narrow on; none of
  * these is a union, so exporting them would only add duplicate top-level definitions to a surface
  * the README asks to keep small.
+ *
+ * **Two shapes carry a `.meta({ title })`** — {@link phaseCue} and {@link timerHint} — because the
+ * `TimerPresets` document reaches them as the value of a `z.record()`, where there is no property
+ * name for the mirror to name the C# class after: two untitled shapes there would both be
+ * `Anonymous`, and the second would silently take the first's class. Under a named property the
+ * property still wins (`…PhaseCues`, `…TimerHints`), so the title changes nothing on the messages
+ * — see the README's authoring rules.
  *
  * The authoring rules these follow (`.describe()` over JSDoc, `z.enum` over `z.literal`, no
  * `z.discriminatedUnion`, no `.nullable()`) are in the repo README.
@@ -65,17 +74,16 @@ export const timerCue = z
   .describe("A cue threshold on the timer's clock: fire when the clock descends past atDuration.");
 
 /**
- * One cue as **authored on a phase**, before the timer reduces it — a `SelfContained` producer's
- * Resolved-tier output. Mirrors upstream's `PresentationPhaseCue` field for field.
+ * One cue as **authored on a phase**, before the timer reduces it — the Calculated tier's cue,
+ * carried symbolic. Mirrors upstream's `PresentationPhaseCue` field for field.
  *
  * **Symbolic, and that is the whole point.** `atUnits: 'percent'` measures `|at|` against the
  * phase's *starting timer value* — the value on the timer when the phase begins, after the timer
  * applies any `remaining` basis-switch and any up-front `floor`/`cap`. That denominator does not
  * exist until the phase starts, so a producer **cannot** compute the concrete threshold and does
- * not try: it publishes what was authored and the Timer manager reduces it at load. The Runtime
- * tier is the Timer manager's in *both* dialects; `SelfContained` moves only the **Resolved**
- * tier — deref the refs, apply the preset, hand over inline arrays — off the room
- * (mtngtools/mtng-dotnet-mono#382).
+ * not try: it publishes what was authored and the Timer manager reduces it at phase load, in
+ * both dialects (ADR-0033). A ref (`cuesRef`) may stand in for the array; the Timer manager
+ * dereferences it against the library levels the room has.
  *
  * Contrast {@link timerCue}, the **reduced** form the timer broadcasts as its own state: one
  * signed clock value, with `anchor` already collapsed into its sign.
@@ -110,7 +118,7 @@ export const phaseCue = z
       .describe(
         "The threshold MAGNITUDE, signed. What it measures is set by anchor, and its unit by " +
           "atUnits. Unlike upstream's phase-config 'minutes', a negative here is a direction " +
-          "and never an auto-mode sentinel. (The timer group's own 'minutes' admits no " +
+          "and never an auto-mode sentinel. (A calculated entry's own 'minutes' admits no " +
           "negative at all — resolution already answered auto.)",
       ),
     atUnits: timingUnit
@@ -124,6 +132,7 @@ export const phaseCue = z
           "when the starting value is 0; an absolute cue is always kept.",
       ),
   })
+  .meta({ title: "PhaseCue" })
   .describe(
     "A cue as authored on a phase, still symbolic: the Timer manager reduces it to a concrete " +
       "clock threshold at phase load, because a percent threshold's denominator is not fixed " +
@@ -139,17 +148,19 @@ export const phaseCue = z
  * structure only. That is the same treatment `timerClock` and the pointer itself already get.
  *
  * **`kind` is deliberately open where `phase` and `load` are closed.** A closed enum fails the
- * *whole* message on an unrecognised value: an unknown hint kind would reject the `timer` group,
- * which rejects the entire `presentation.state-changed`, blanking the room's presentation state.
- * `SelfContained` exists for third-party producers that are deliberately not version-pinned to
- * the room they feed, so a newer producer's hint kind must degrade to *ignored*, never to *state
- * lost*. What that gives up — typo-catching at the boundary — is low-value, because the timer
- * branches on `kind` and ignores what it cannot implement either way.
+ * *whole* message on an unrecognised value: an unknown hint kind would reject the `presentation`
+ * group, which rejects the entire `presentation.state-changed`, blanking the room's presentation
+ * state. Producers are deliberately not version-pinned to the room they feed, so a newer
+ * producer's hint kind must degrade to *ignored*, never to *state lost*. What that gives up —
+ * typo-catching at the boundary — is low-value, because the timer branches on `kind` and ignores
+ * what it cannot implement either way.
  *
  * The field set stays closed regardless: upstream carries a `[key: string]: unknown` passthrough
  * on its custom arm, and that index signature is dropped here. A passthrough bag would break the
  * `strictObject` discipline every message follows, hand the mirror an untyped dictionary, and
- * nothing in the room could consume the contents.
+ * nothing in the room could consume the contents. A host's own properties have a home instead —
+ * the named bags `prMetadata` and `spMetadata`, opaque to the room by design
+ * (mtngtools/mtng-dotnet-mono#717).
  */
 export const timerHint = z
   .strictObject({
@@ -225,6 +236,7 @@ export const timerHint = z
       });
     }
   })
+  .meta({ title: "TimerHint" })
   .describe(
     "One timer hint: how the phase's actual duration behaves under overrun. Evaluated once, at " +
       "phase load, to set the phase's starting timer value — never re-evaluated thereafter. " +
@@ -237,9 +249,10 @@ export const timerHint = z
  *
  * **Closed where hint `kind` is open**, and the asymmetry is upstream's shape rather than a
  * preference: `PhaseLoad` is modelled as a five-member union with no extensible arm, whereas
- * `timerHints` has one explicitly. `phase` on this same message is already a ratified closed
- * enum, so closed is the consistent reading. Absence of the whole `timer` group, not a sixth
- * value, is how a producer says nothing about loading.
+ * `timerHints` has one explicitly. `phase` on the pointer is already a ratified closed enum, so
+ * closed is the consistent reading. Absence of `load` on the entry, not a sixth value, is how a
+ * producer says nothing about loading — the ladder's later rungs (the preset's `load`, the host's
+ * `phaseLoading`, then `clear`) answer in the Timer manager (ADR-0033).
  */
 export const load = z
   .enum(["auto", "auto-paused", "clear", "ignore", "next"])
@@ -251,3 +264,85 @@ export const load = z
       "value — the host phaseLoading rung, the timerAutomation kill-switch — is the Timer " +
       "manager's and is not on the wire.",
   );
+
+/**
+ * The three phases a presentation has — the key of every per-phase container on this wire.
+ *
+ * Not the pointer's `phase`, which has a fourth arm, `none`: a container has nothing to hold
+ * for no presentation.
+ *
+ * **Every "one thing per phase" object is a `z.partialRecord(phaseKey, …)` with a titled value,
+ * never a `z.strictObject({ intro, talk, qa })`.** The JSON and the inferred TypeScript type are
+ * identical — `{ intro?, talk?, qa? }`, unknown keys rejected — but the C# mirror names an inline
+ * object after its property, so the literal form emits `…Intro`, `…Talk` and `…Qa` as three
+ * classes of one shape with three copies of every enum beneath them, plus orphan `…Anchor2`,
+ * `…Anchor3` enums where it dedupes the arrays' item class but not the item's enums; and where
+ * two per-phase containers of different shapes sit in one document, their `Intro`s merge
+ * silently. The record form emits one `IDictionary<string, T>` with one titled value class.
+ * Verified against the real generator while authoring (mtngtools/mtng-dotnet-mono#733). The
+ * emitted schema closes the keys with `propertyNames`, so the object is as strict as the literal.
+ */
+export const phaseKey = z.enum(["intro", "talk", "qa"]);
+
+/**
+ * The phase body — the four behaviour/display props a phase authors, plus the two refs that name
+ * a cue or hint set in a library instead of spelling it inline.
+ *
+ * Shared by the `presentation` group's calculated entry (which adds the durations to it) and by
+ * a `TimerPresets` preset (which is exactly this, per phase). Refs are legal in both: the Timer
+ * manager dereferences them against the library levels its dialect has, and inline beats ref
+ * when both are set — upstream's rule (ADR-0033). No `minutes`: a body is behaviour, never
+ * duration.
+ *
+ * Every member is optional. The keys are `.min(1)` — an empty key would be a second way of
+ * saying nothing, beside absence — where `label` admits `""`: an explicit empty name wins the
+ * ladder like any present value, and is how a producer shows no phase name at all.
+ */
+export const phaseBody = z.strictObject({
+  label: z
+    .string()
+    .optional()
+    .describe(
+      "The phase's display name, overriding the built-in one (Introduction / Talk / Questions). " +
+        "Resolved per phase down the ladder — the entry's, then the preset's, then the built-in " +
+        "name — so absent here defers to the next rung. '' is allowed and is explicit: it wins " +
+        "the ladder like any present value, so the timer broadcasts an empty label — the one " +
+        "way to show no phase name. What the timer broadcasts as the top-level 'label' its own " +
+        "events carry.",
+    ),
+  load: load.optional(),
+  phaseCues: z
+    .array(phaseCue)
+    .describe(
+      "The phase's cue set as AUTHORED, in phaseCue's symbolic form — thresholds not reduced. " +
+        "Inline beats cuesRef when both are set. Deliberately NOT the reduced timerCue the " +
+        "timer broadcasts as 'cues' on timer.state-changed: the authored list and the reduced " +
+        "set never share a spelling, because two shapes under one name merge silently in the " +
+        "C# mirror.",
+    )
+    .optional(),
+  timerHints: z
+    .array(timerHint)
+    .describe(
+      "The phase's hint set, in authored order — later qualifying entries win over earlier " +
+        "ones for the same bound. Inline beats timerHintsRef when both are set.",
+    )
+    .optional(),
+  cuesRef: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "The key of a named cue set in the library, used when phaseCues is absent. Resolved per " +
+        "phase against the levels the room has — session, meeting, Timer:Presets — and a " +
+        "dangling key falls through the ladder with a resolverNotes line, never an error.",
+    ),
+  timerHintsRef: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "The key of a named hint set in the library, used when timerHints is absent. Resolved as " +
+        "cuesRef is.",
+    ),
+});
