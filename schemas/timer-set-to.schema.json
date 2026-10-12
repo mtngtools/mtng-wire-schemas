@@ -46,6 +46,32 @@
         "running": {
           "type": "boolean",
           "description": "true to start counting immediately, false to set and hold."
+        },
+        "cues": {
+          "description": "The run's cue set, landing with the value and running in one transition. Absent, the held cues stay; an empty array holds only the implicit timesUp at zero.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Cue name, e.g. 'warn' or 'timesUp'. Free-form, and carried verbatim in firedCues, furthestCue and cue-fired. A label that begins with a cue family's name belongs to that family — 'warn2' is a 'warn'."
+              },
+              "atDuration": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Clock value the cue fires at, in signed whole seconds — negative in overtime."
+              }
+            },
+            "required": [
+              "label",
+              "atDuration"
+            ],
+            "additionalProperties": false,
+            "description": "A cue threshold on the timer's clock: fire when the clock descends past atDuration."
+          }
         }
       },
       "required": [
@@ -58,7 +84,7 @@
         "running"
       ],
       "additionalProperties": false,
-      "description": "Set the clock, and say whether it runs. Atomic on purpose — set-and-run and set-and-hold are one command, so no observer sees the intermediate state. Re-anchors startingValue."
+      "description": "Set the clock, and say whether it runs. Atomic on purpose — set-and-run and set-and-hold are one command, so no observer sees the intermediate state. Re-anchors startingValue and drops the run's label. With cues, the cue set lands in the same transition; without, the held cues stay."
     }
   }
 }

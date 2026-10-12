@@ -21,17 +21,32 @@ import { timerEnvelope } from "./common.ts";
  * `timer.set-to.<target>` — set the clock, and say whether it runs.
  *
  * Atomic on purpose: set-and-run and set-and-hold are one command, so no observer ever sees the
- * intermediate state. Re-anchors `startingValue`.
+ * intermediate state. Re-anchors `startingValue`, and drops the run's label — a timer driven
+ * directly by an operator has no phase label to carry.
+ *
+ * `cues` is optional. Absent, the held cues stay. Present, the value, running and cues land in one
+ * transition, so no observer sees the new clock against the old run's cues and no stale cue fires;
+ * an empty array holds only the implicit `timesUp` at zero. Sending `set-to` and `set-cues` as two
+ * messages is not the same: either order fires a cue the single message never would.
  */
 export const TimerSetTo = z
   .strictObject({
     ...timerEnvelope("set-to", "command"),
     value: z.int().describe("The clock value to set, in signed whole seconds."),
     running: z.boolean().describe("true to start counting immediately, false to set and hold."),
+    cues: z
+      .array(timerCue)
+      .optional()
+      .describe(
+        "The run's cue set, landing with the value and running in one transition. Absent, the " +
+          "held cues stay; an empty array holds only the implicit timesUp at zero.",
+      ),
   })
   .describe(
     "Set the clock, and say whether it runs. Atomic on purpose — set-and-run and set-and-hold " +
-      "are one command, so no observer sees the intermediate state. Re-anchors startingValue.",
+      "are one command, so no observer sees the intermediate state. Re-anchors startingValue and " +
+      "drops the run's label. With cues, the cue set lands in the same transition; without, the " +
+      "held cues stay.",
   );
 
 export type TimerSetTo = z.infer<typeof TimerSetTo>;
