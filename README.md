@@ -87,10 +87,10 @@ time, not a shape at a time.
   one concept. Only the timer domain imports the reduced half today, and splitting the pair
   across two modules to track that would file one concept in two places and invite the halves to
   drift. **Import count is evidence about a module, never a rule about an export.**
-- **Not a fifth domain.** It sits *outside* `messages/` rather than beside `backdrop/`,
-  `presentation/`, `timer/` and `window/`, because nothing in it is a message and nothing in it
-  has a `domain` — which is a closed per-domain enum in every envelope. A folder among the
-  domains would say the opposite.
+- **Not a domain.** It sits *outside* `messages/` rather than beside `backdrop/`,
+  `presentation/`, `room-computers/`, `timer/` and `window/`, because nothing in it is a message
+  and nothing in it has a `domain` — which is a closed per-domain enum in every envelope. A
+  folder among the domains would say the opposite.
 - **Mutual imports were not the alternative.** Both `common.ts` files build Zod schemas at module
   top level, so importing each other is a circular *runtime* dependency in which one side
   evaluates to `undefined` depending on entry order. Duplicating the shapes was also rejected: it
