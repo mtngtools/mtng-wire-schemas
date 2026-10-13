@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/RoomComputersStateChanged",
+  "definitions": {
+    "RoomComputersStateChanged": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "state-changed"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "room-computers"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Scoped to session rooms, and room-singular, so the key stops here: there is no <target> segment on any room-computers message."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "The PUBLISH instant — when this message went out, ISO-8601 UTC. There is no separate equality stamp: the document is the state, so two publishes compare by content."
+        },
+        "computers": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "A virtual name: lowercase letters, digits and hyphens (^[a-z0-9-]+$), no length limit."
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "machineName": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The box's routing label — IRoutingConfiguration.MachineName, the label the backbone reaches the box by. Any non-empty string, NEVER PARSED: it is an OS observation (Windows shows hostnames upper-case). A reader compares it ordinal, ignoring case, and nothing else."
+              }
+            },
+            "required": [
+              "machineName"
+            ],
+            "additionalProperties": false,
+            "title": "Computer",
+            "description": "One computer in the room: the box a virtual name points at."
+          },
+          "description": "Virtual name → the computer doing that job. Required and NEVER EMPTY: the Manager always publishes its own entry, primary-controller, though the wire does not require that key."
+        },
+        "groups": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "A group name: lowercase letters, digits and hyphens (^[a-z0-9-]+$), no length limit."
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$",
+              "description": "A member — a virtual name, a key in computers: lowercase letters, digits and hyphens (^[a-z0-9-]+$), no length limit."
+            },
+            "description": "The group's members. Each is a key in computers and appears once; the order is kept as authored and means nothing — a console may show it, never act on it."
+          },
+          "description": "Group name → the virtual names in it. Required; may be an empty map, and a group may be empty. Group names and virtual names are separate namespaces."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "computers",
+        "groups"
+      ],
+      "additionalProperties": false,
+      "description": "The room's computers, by virtual name and group — the whole document, published at boot and on every change. computers is never empty; every group member is a key in computers and appears once per group. Names match ^[a-z0-9-]+$; machineName is never parsed."
+    }
+  }
+}
