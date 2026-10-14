@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/SwitcherTallyChanged",
+  "definitions": {
+    "SwitcherTallyChanged": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "tally-changed"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "switcher"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Names the role, not the vendor."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "event"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "The PUBLISH instant — when this message went out, ISO-8601 UTC. A republish has the same content and a new ts."
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "The switcher this message addresses — the <target> routing segment: the switcher's configured name, 'main' by default, lowercase letters, digits and hyphens. Required on every switcher message."
+        },
+        "link": {
+          "type": "string",
+          "enum": [
+            "connected",
+            "connecting",
+            "dropped"
+          ],
+          "description": "The switcher's link: connected, connecting or dropped. Anything but connected means the document holds the last the switcher reported, not live state."
+        },
+        "computers": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "A virtual name: lowercase letters, digits and hyphens (^[a-z0-9-]+$), room-computers' rule."
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "tally": {
+                "type": "string",
+                "enum": [
+                  "program",
+                  "preview",
+                  "off"
+                ],
+                "description": "The computer's light, in the switcher's words: program, preview or off."
+              },
+              "color": {
+                "description": "The light's colour, '#rrggbb' or '#rrggbbaa'. Present exactly when tally isn't off.",
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+              }
+            },
+            "required": [
+              "tally"
+            ],
+            "additionalProperties": false,
+            "title": "Computer",
+            "description": "One mapped computer's light: its tally and, when lit, its colour."
+          },
+          "description": "Virtual name → the computer's light. Every mapped computer is listed; empty when none is mapped."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target",
+        "link",
+        "computers"
+      ],
+      "additionalProperties": false,
+      "description": "The switcher's tally — every mapped room computer by virtual name, with its light and, when lit, its colour; and the basic state's link. color is present exactly when tally isn't off; computers may be empty. Published when it differs in meaning."
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$ref": "#/definitions/SwitcherCurrentDetails",
+  "definitions": {
+    "SwitcherCurrentDetails": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "current-details"
+          ],
+          "description": "The message name — <name> in the routing key."
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "switcher"
+          ],
+          "description": "The owning domain — <domain> in the routing key. Names the role, not the vendor."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "rpc"
+          ],
+          "description": "Which exchange carries this message. Never reaches the routing key."
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "description": "The PUBLISH instant — when this message went out, ISO-8601 UTC. A republish has the same content and a new ts."
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "The switcher this message addresses — the <target> routing segment: the switcher's configured name, 'main' by default, lowercase letters, digits and hyphens. Required on every switcher message."
+        }
+      },
+      "required": [
+        "type",
+        "domain",
+        "kind",
+        "ts",
+        "target"
+      ],
+      "additionalProperties": false,
+      "description": "Ask one switcher for its advanced state. Envelope-only — the reply is a SwitcherDetailsChanged, identical to the broadcast."
+    }
+  }
+}

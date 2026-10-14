@@ -48,6 +48,9 @@ mtng-wire-schemas/
                              #   the snapshot rpc, and 6 commands (enter/exit, four goto-*)
       room-computers/        #   the room-computers Manager's set: the state document by
                              #   virtual name and group, and the snapshot rpc
+      switcher/              #   the switcher Manager's set: three documents (the basic
+                             #   state, the details, the tally), four commands and a
+                             #   snapshot rpc per document
       timer/                 #   the Timer manager's set: events, rpc, commands + shared pieces;
                              #   documents.ts holds TimerPresets, the Timer:Presets document
       window/                #   the window domain, whole: the slot-content trio, the
@@ -60,7 +63,7 @@ mtng-wire-schemas/
   fixtures/                  # conformance corpora: { name, wire, expected } cases both
     meeting-data/            #   consumers run — the wire -> reliable PresentationFull fill
   scripts/generate.mjs       # the emitter: src/messages/ (Zod) -> schemas/ (JSON Schema)
-  tests/                     # the suite: the presentation, room-computers and timer sets'
+  tests/                     # the suite: the presentation, room-computers, switcher and timer sets'
                              #   .check()s, the fixtures, the emitted schemas as the mirror reads them — `npm test`
   package.json               # Zod SoT + `generate` / `typecheck` / `test` / `check` scripts
 ```
@@ -88,9 +91,9 @@ time, not a shape at a time.
   across two modules to track that would file one concept in two places and invite the halves to
   drift. **Import count is evidence about a module, never a rule about an export.**
 - **Not a domain.** It sits *outside* `messages/` rather than beside `backdrop/`,
-  `presentation/`, `room-computers/`, `timer/` and `window/`, because nothing in it is a message
-  and nothing in it has a `domain` — which is a closed per-domain enum in every envelope. A
-  folder among the domains would say the opposite.
+  `presentation/`, `room-computers/`, `switcher/`, `timer/` and `window/`, because nothing in
+  it is a message and nothing in it has a `domain` — which is a closed per-domain enum in every
+  envelope. A folder among the domains would say the opposite.
 - **Mutual imports were not the alternative.** Both `common.ts` files build Zod schemas at module
   top level, so importing each other is a circular *runtime* dependency in which one side
   evaluates to `undefined` depending on entry order. Duplicating the shapes was also rejected: it
@@ -213,7 +216,7 @@ Generated output in `schemas/` is **committed**, and each consumer guards it wit
 The suite under [`tests/`](tests/) runs on node's built-in runner with no test dependency — node
 strips the TypeScript types on import, so the authored `src/*.ts` is what the tests exercise, as
 it is what the emitter runs. Three kinds of test live there: the invariants the `.check()`s
-enforce — the presentation, room-computers and timer sets'; the window domain's are not yet covered — (the
+enforce — the presentation, room-computers, switcher and timer sets'; the window domain's are not yet covered — (the
 mirror carries structure only, so this is the one place an invariant is proven); the emitted
 `schemas/` read the way NJsonSchema will read them — no `oneOf`, no nullable, every object closed
 but the named bags, and never two differently-shaped objects under one mirror name in one
