@@ -39,8 +39,6 @@ export const switcherEnvelope = <TType extends string, TKind extends "event" | "
       "The PUBLISH instant — when this message went out, ISO-8601 UTC. A republish has the same " +
         "content and a new ts.",
     ),
-  // TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-  // any non-empty target over ^[a-z0-9-]+$ — the spec states no pattern for the configured name, and timer's target, the precedent, is min(1)
   target: z
     .string()
     .min(1)
@@ -74,8 +72,6 @@ export const switcherMe = z
  *
  * Black isn't an input, so the wire calls them all sources — the ATEM's own term.
  */
-// TEMPORARY AGENT DECISION APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// a source id is a non-negative integer over any integer — the spec says only "the switcher's source id"; the ATEM numbers its sources from 0 (Black), and none is negative
 export const switcherSourceId = (what: string) =>
   z.int().min(0).describe(`${what}: the switcher's source id, non-negative.`);
 
@@ -90,8 +86,6 @@ export const switcherSourceId = (what: string) =>
  * the mirror names an object under a property after the property, and a title does not override
  * that hint (README, Authoring rules), so the duplication is the generator's, not a second shape.
  */
-// TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// SwitcherStateChangedProgram / SwitcherStateChangedPreview (the bus) over one SwitcherStateChangedBus — the mirror names an object after its property and a title cannot override it; one class needs a generator change that renames existing types
 export const switcherBus = z
   .strictObject({
     source: switcherSourceId("The source on this bus"),
@@ -110,8 +104,6 @@ export const switcherBus = z
  * One M/E in the basic state: `{me, program, preview, inTransition}`. Mirrors as
  * `SwitcherStateChangedMixEffects`, after the array that holds it, as `TimerStateChangedCues`.
  */
-// TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// SwitcherStateChangedMixEffects (the M/E) over SwitcherStateChangedMixEffect — the mirror names an array's item after the array property, the TimerStateChangedCues precedent; the singular needs a generator change
 export const switcherMixEffect = z
   .strictObject({
     me: switcherMe,
@@ -130,8 +122,6 @@ export const switcherMixEffect = z
  * One source in the advanced state: `{id, shortName, longName}`. Mirrors as
  * `SwitcherDetailsChangedSources`, after the array that holds it.
  */
-// TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// SwitcherDetailsChangedSources (the source) over SwitcherDetailsChangedSource — the mirror names an array's item after the array property, the TimerStateChangedCues precedent
 export const switcherSource = z
   .strictObject({
     id: switcherSourceId("The source"),
@@ -149,8 +139,6 @@ export const switcherSource = z
  * One SuperSource box: `{box, enabled, source}`. Mirrors as `SwitcherDetailsChangedBoxes`, after
  * the array that holds it.
  */
-// TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// SwitcherDetailsChangedBoxes (the box) over SwitcherDetailsChangedBox — the mirror names an array's item after the array property, the TimerStateChangedCues precedent
 export const switcherSuperSourceBox = z
   .strictObject({
     box: z.int().min(1).describe("The box, numbered from 1."),
@@ -163,8 +151,6 @@ export const switcherSuperSourceBox = z
  * A SuperSource's art: `{fill, key, placement}`. Mirrors as `SwitcherDetailsChangedArt`, after
  * its property, with `SwitcherDetailsChangedArtPlacement` for the placement.
  */
-// TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// SwitcherDetailsChangedArt over SwitcherDetailsChangedSuperSourceArt — the mirror names an object after its property; art occurs once, so no qualifier is needed
 export const switcherSuperSourceArt = z
   .strictObject({
     fill: switcherSourceId("The art's fill source"),
@@ -179,8 +165,6 @@ export const switcherSuperSourceArt = z
  * One SuperSource in the advanced state: `{superSource, id, boxes, art}`. Mirrors as
  * `SwitcherDetailsChangedSuperSources`, after the array that holds it.
  */
-// TEMPORARY AGENT NAMING APPROVAL, IF THIS IS FOUND IN PR REVIEW FLAG AS PROBLEM
-// SwitcherDetailsChangedSuperSources (the SuperSource) over SwitcherDetailsChangedSuperSource — the mirror names an array's item after the array property, the TimerStateChangedCues precedent
 export const switcherSuperSource = z
   .strictObject({
     superSource: z
