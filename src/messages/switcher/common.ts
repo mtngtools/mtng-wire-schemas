@@ -41,10 +41,11 @@ export const switcherEnvelope = <TType extends string, TKind extends "event" | "
     ),
   target: z
     .string()
-    .min(1)
+    .regex(/^[a-z0-9-]+$/)
     .describe(
       "The switcher this message addresses — the <target> routing segment: the switcher's " +
-        "configured name, 'main' by default. Required on every switcher message.",
+        "configured name, 'main' by default, lowercase letters, digits and hyphens. Required on " +
+        "every switcher message.",
     ),
 });
 

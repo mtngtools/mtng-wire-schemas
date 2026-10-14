@@ -87,6 +87,8 @@ test("every message carries the envelope, domain switcher, and a required target
     const { target, ...untargeted } = sample;
     assertRejects(schema, untargeted, "target", `${sample.type} without target`);
     assertRejects(schema, { ...sample, target: "" }, "target", `${sample.type} with an empty target`);
+    assertRejects(schema, { ...sample, target: "Studio B" }, "target", `${sample.type} with a target off the routing-segment pattern`);
+    assertAccepts(schema, { ...sample, target: "studio-b2" }, `${sample.type} with a lowercase, hyphenated target`);
     assertRejects(schema, { ...sample, domain: "atem" }, "domain", `${sample.type} in another domain`);
     assertRejects(schema, { ...sample, extra: true }, undefined, `${sample.type} with an unknown member`);
   }

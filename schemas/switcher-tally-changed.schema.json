@@ -34,8 +34,8 @@
         },
         "target": {
           "type": "string",
-          "minLength": 1,
-          "description": "The switcher this message addresses — the <target> routing segment: the switcher's configured name, 'main' by default. Required on every switcher message."
+          "pattern": "^[a-z0-9-]+$",
+          "description": "The switcher this message addresses — the <target> routing segment: the switcher's configured name, 'main' by default, lowercase letters, digits and hyphens. Required on every switcher message."
         },
         "link": {
           "type": "string",
